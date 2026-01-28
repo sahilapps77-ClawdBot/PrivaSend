@@ -162,6 +162,109 @@ class TestOther:
 
 
 # ---------------------------------------------------------------------------
+# UPI ID
+# ---------------------------------------------------------------------------
+
+class TestUPI:
+    def test_upi_oksbi(self):
+        assert PIIType.UPI_ID in types_found("Pay me at rahul@oksbi")
+
+    def test_upi_ybl(self):
+        assert PIIType.UPI_ID in types_found("UPI: merchant.store@ybl")
+
+    def test_upi_paytm(self):
+        assert PIIType.UPI_ID in types_found("Send to user123@paytm")
+
+
+# ---------------------------------------------------------------------------
+# Username:password
+# ---------------------------------------------------------------------------
+
+class TestUsernamePassword:
+    def test_colon_format(self):
+        assert PIIType.USERNAME_PASSWORD in types_found("username: admin password: secret123")
+
+    def test_password_equals(self):
+        assert PIIType.USERNAME_PASSWORD in types_found("password=MyS3cretPass!")
+
+    def test_no_false_positive(self):
+        assert PIIType.USERNAME_PASSWORD not in types_found("The user was very happy today")
+
+
+# ---------------------------------------------------------------------------
+# Crypto wallets
+# ---------------------------------------------------------------------------
+
+class TestCryptoWallet:
+    def test_ethereum(self):
+        assert PIIType.CRYPTO_WALLET in types_found(
+            "Send ETH to 0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18"
+        )
+
+    def test_bitcoin_bc1(self):
+        assert PIIType.CRYPTO_WALLET in types_found(
+            "BTC: bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"
+        )
+
+
+# ---------------------------------------------------------------------------
+# UK NI number
+# ---------------------------------------------------------------------------
+
+class TestUKNI:
+    def test_with_spaces(self):
+        assert PIIType.UK_NI_NUMBER in types_found("NI number: AB 12 34 56 C")
+
+    def test_no_spaces(self):
+        assert PIIType.UK_NI_NUMBER in types_found("NI: AB123456C")
+
+
+# ---------------------------------------------------------------------------
+# Canadian SIN
+# ---------------------------------------------------------------------------
+
+class TestCanadianSIN:
+    def test_with_dashes(self):
+        assert PIIType.CANADIAN_SIN in types_found("SIN: 123-456-789")
+
+    def test_with_spaces(self):
+        assert PIIType.CANADIAN_SIN in types_found("SIN: 123 456 789")
+
+
+# ---------------------------------------------------------------------------
+# US EIN
+# ---------------------------------------------------------------------------
+
+class TestUSEIN:
+    def test_ein(self):
+        assert PIIType.US_EIN in types_found("EIN: 12-3456789")
+
+
+# ---------------------------------------------------------------------------
+# Vehicle plates
+# ---------------------------------------------------------------------------
+
+class TestVehiclePlate:
+    def test_indian_plate(self):
+        assert PIIType.VEHICLE_PLATE in types_found("Vehicle: MH 12 AB 3456")
+
+    def test_uk_plate(self):
+        assert PIIType.VEHICLE_PLATE in types_found("Reg: AB12 CDE")
+
+
+# ---------------------------------------------------------------------------
+# SWIFT/BIC
+# ---------------------------------------------------------------------------
+
+class TestSWIFT:
+    def test_swift_11_char(self):
+        assert PIIType.SWIFT_BIC in types_found("SWIFT: HDFCINBBXXX")
+
+    def test_swift_8_char(self):
+        assert PIIType.SWIFT_BIC in types_found("BIC: SBININBB")
+
+
+# ---------------------------------------------------------------------------
 # Mixed PII (multiple types in one text)
 # ---------------------------------------------------------------------------
 

@@ -37,6 +37,14 @@ class PIIType(str, Enum):
     MAC_ADDRESS = "MAC_ADDRESS"
     VIN = "VIN"
     URL_WITH_CREDENTIALS = "URL_WITH_CREDENTIALS"
+    UPI_ID = "UPI_ID"
+    USERNAME_PASSWORD = "USERNAME_PASSWORD"
+    CRYPTO_WALLET = "CRYPTO_WALLET"
+    UK_NI_NUMBER = "UK_NI_NUMBER"
+    CANADIAN_SIN = "CANADIAN_SIN"
+    US_EIN = "US_EIN"
+    VEHICLE_PLATE = "VEHICLE_PLATE"
+    SWIFT_BIC = "SWIFT_BIC"
     PERSON = "PERSON"
     ADDRESS = "ADDRESS"
     ORGANIZATION = "ORGANIZATION"
@@ -202,12 +210,73 @@ _add(
     0.95,
 )
 
+# --- UPI ID (India) ---
+# Format: name@bankcode (e.g., rahul@oksbi, user@upi, merchant@ybl)
+_add(PIIType.UPI_ID, r"\b[a-zA-Z0-9.\-_]{3,}@(?:oksbi|okaxis|okicici|okhdfcbank|ybl|apl|paytm|ibl|upi|axl|sbi|icici|hdfc|hdfcbank|barodampay|indus|kotak|federal|rbl|citi|idbi|pnb|unionbank|bob|cnrb|dlb|tjsb|kvb|axisbank|idfcbank|yesbank|dbs|scb|hsbc|csbpay|equitas|fino|jupiter|freecharge|slice|gpay|phonepe)\b", 0.90, re.IGNORECASE)
+
+# --- Username:password pairs ---
+# Catches "username: admin password: secret123" and "user/pass = admin/secret"
+_add(PIIType.USERNAME_PASSWORD, r"(?:user(?:name)?|login)\s*[:=]\s*\S+\s+(?:pass(?:word)?|pwd)\s*[:=]\s*\S+", 0.90, re.IGNORECASE)
+# Also: "admin:password123" format (not URL, standalone)
+_add(PIIType.USERNAME_PASSWORD, r"\b(?:password|passwd|pwd)\s*[:=]\s*\S{6,}\b", 0.80, re.IGNORECASE)
+
+# --- Cryptocurrency wallet addresses ---
+# Bitcoin (starts with 1, 3, or bc1, 26-62 chars)
+_add(PIIType.CRYPTO_WALLET, r"\b(?:1|3)[1-9A-HJ-NP-Za-km-z]{25,34}\b", 0.75)
+_add(PIIType.CRYPTO_WALLET, r"\bbc1[a-zA-HJ-NP-Z0-9]{25,87}\b", 0.80)
+# Ethereum (0x followed by 40 hex chars)
+_add(PIIType.CRYPTO_WALLET, r"\b0x[0-9a-fA-F]{40}\b", 0.85)
+
+# --- UK National Insurance number ---
+# Format: AB 12 34 56 C (with or without spaces)
+_add(PIIType.UK_NI_NUMBER, r"\b[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]\b", 0.85)
+
+# --- Canadian SIN ---
+# Format: 123-456-789 or 123 456 789
+_add(PIIType.CANADIAN_SIN, r"\b\d{3}[\s\-]\d{3}[\s\-]\d{3}\b", 0.60)  # low — overlaps with phone fragments
+
+# --- US EIN (Employer Identification Number) ---
+# Format: 12-3456789
+_add(PIIType.US_EIN, r"\b\d{2}-\d{7}\b", 0.65)
+
+# --- Vehicle registration plates ---
+# India: AB 12 CD 3456 or AB12CD3456
+_add(PIIType.VEHICLE_PLATE, r"\b[A-Z]{2}\s?\d{1,2}\s?[A-Z]{1,3}\s?\d{4}\b", 0.70)
+# US: varies by state, common pattern: ABC-1234, ABC 1234, 1ABC234
+_add(PIIType.VEHICLE_PLATE, r"\b[A-Z]{3}[\s\-]?\d{4}\b", 0.45)  # low — common letter-number combos
+# UK: AB12 CDE
+_add(PIIType.VEHICLE_PLATE, r"\b[A-Z]{2}\d{2}\s?[A-Z]{3}\b", 0.65)
+
+# --- SWIFT/BIC code ---
+# Format: 8 or 11 chars, e.g., HDFCINBBXXX, SBININBB
+_add(PIIType.SWIFT_BIC, r"\b[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b", 0.55)  # low — many 8-letter words match
+
+
+# Context keywords for DATE_OF_BIRTH — only flag a date as DOB if one of
+# these appears within 80 characters before or after the match.
+_DOB_CONTEXT_KEYWORDS = re.compile(
+    r"\b(?:born|birth|dob|d\.o\.b|date\s+of\s+birth|birthday|birthdate|age|DOB)\b",
+    re.IGNORECASE,
+)
+
+
+def _has_dob_context(text: str, start: int, end: int) -> bool:
+    """Check if a date match has DOB context within 80 chars."""
+    window_start = max(0, start - 80)
+    window_end = min(len(text), end + 80)
+    window = text[window_start:window_end]
+    return bool(_DOB_CONTEXT_KEYWORDS.search(window))
+
 
 def _detect_regex(text: str) -> list[DetectedEntity]:
     """Run all regex patterns against text. Returns raw matches (may overlap)."""
     results: list[DetectedEntity] = []
     for pii_type, pattern, confidence in _REGEX_PATTERNS:
         for match in pattern.finditer(text):
+            # DOB requires context keyword nearby
+            if pii_type == PIIType.DATE_OF_BIRTH:
+                if not _has_dob_context(text, match.start(), match.end()):
+                    continue
             results.append(
                 DetectedEntity(
                     start=match.start(),
@@ -280,6 +349,10 @@ def _detect_presidio(text: str) -> list[DetectedEntity]:
     for result in results:
         pii_type = _PRESIDIO_TYPE_MAP.get(result.entity_type)
         if pii_type is None:
+            continue
+        # Filter out low-confidence Presidio guesses (reduces false positives
+        # from ORGANIZATION, LOCATION being applied to common words)
+        if result.score < 0.6:
             continue
         entities.append(
             DetectedEntity(
