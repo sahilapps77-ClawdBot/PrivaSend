@@ -220,7 +220,8 @@ _PRESIDIO_TYPE_MAP: dict[str, PIIType] = {
     "CREDIT_CARD": PIIType.CREDIT_CARD,
     "IBAN_CODE": PIIType.IBAN,
     "IP_ADDRESS": PIIType.IP_ADDRESS,
-    "DATE_TIME": PIIType.DATE_TIME,
+    # DATE_TIME excluded — Presidio flags generic words like "quarterly", "last month".
+    # Specific dates (DOB) are handled by regex with proper patterns.
     "NRP": PIIType.PERSON,  # nationality/religion/political group
     "MEDICAL_LICENSE": PIIType.MEDICAL_RECORD,
     "US_DRIVER_LICENSE": PIIType.DRIVERS_LICENSE,
