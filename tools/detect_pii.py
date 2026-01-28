@@ -177,6 +177,24 @@ _add(PIIType.MAC_ADDRESS, r"\b(?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b", 0.85)
 # --- VIN ---
 _add(PIIType.VIN, r"\b[A-HJ-NPR-Z0-9]{17}\b", 0.50)  # low — many 17-char strings exist
 
+# --- Street address ---
+# Pattern: number + street name + street suffix (e.g., "42 Oak Street", "123 Main Blvd")
+_STREET_SUFFIXES = (
+    r"Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Drive|Dr|Lane|Ln|"
+    r"Court|Ct|Place|Pl|Way|Circle|Cir|Trail|Trl|Parkway|Pkwy|"
+    r"Highway|Hwy|Terrace|Ter|Crescent|Cres|Square|Sq"
+)
+# Full address: number + street + optional apt/suite + optional city/state/zip
+_add(
+    PIIType.ADDRESS,
+    r"\b\d{1,6}\s+[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\s+(?:" + _STREET_SUFFIXES + r")\.?"
+    r"(?:\s*,?\s*(?:Apt|Suite|Unit|#)\s*\w+)?"
+    r"(?:\s*,\s*[A-Z][a-zA-Z\s]+)?"
+    r"(?:\s*,?\s*[A-Z]{2})?"
+    r"(?:\s+\d{5}(?:-\d{4})?)?\b",
+    0.85,
+)
+
 # --- URL with credentials ---
 _add(
     PIIType.URL_WITH_CREDENTIALS,

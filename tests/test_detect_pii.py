@@ -122,6 +122,20 @@ class TestIndianIDs:
 # Other patterns
 # ---------------------------------------------------------------------------
 
+class TestAddress:
+    def test_street_address(self):
+        assert PIIType.ADDRESS in types_found("He lives at 42 Oak Street in the city")
+
+    def test_full_address_with_city(self):
+        assert PIIType.ADDRESS in types_found("Office at 123 Main Blvd, Suite 400")
+
+    def test_address_with_avenue(self):
+        assert PIIType.ADDRESS in types_found("Visit us at 789 Park Avenue")
+
+    def test_no_false_positive_plain_number(self):
+        assert PIIType.ADDRESS not in types_found("I bought 42 apples today")
+
+
 class TestOther:
     def test_iban(self):
         assert PIIType.IBAN in types_found("IBAN: GB29 NWBK 6016 1331 9268 19")
