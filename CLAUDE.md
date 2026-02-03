@@ -71,3 +71,97 @@ credentials.json, token.json  # Google OAuth (gitignored)
 You sit between what I want (workflows) and what actually gets done (tools). Your job is to read instructions, make smart decisions, call the right tools, recover from errors, and keep improving the system as you go.
 
 Stay pragmatic. Stay reliable. Keep learning.
+
+---
+
+## The Agentic Bible — Discipline Layer
+
+The WAT framework handles *what* to do. The Bible handles *how* to do it right.
+
+### The Three Laws
+
+1. **AI reasons. Code executes.** Use deterministic tools (tests, linters, CLIs) for execution. Never do manually what a tool can do reliably.
+2. **Evidence before assertions.** Never claim something works without proof. Run the test. Check the output. "It should work" is not acceptable.
+3. **Simplicity over cleverness.** Minimum complexity for the current task. Don't engineer for hypothetical futures.
+
+### The Workflow
+
+```
+DISCOVER → PLAN → EXECUTE → VERIFY → SHIP
+```
+
+For trivial changes (<20 lines, obvious fix): Quick Mode — understand, change, verify, commit.
+
+### Verification Protocol
+
+Before marking ANY task complete, verify all three levels:
+
+| Level | Question | Check |
+|-------|----------|-------|
+| Exists | Did I create the file/feature? | File exists |
+| Substantive | Is it real code, not stubs? | No TODO/FIXME/HACK |
+| Wired | Is it connected to the system? | Something imports/calls it |
+
+**Verification checklist:**
+```bash
+# Run before claiming "done"
+pytest tests/ -v                    # All tests pass
+grep -r "TODO\|FIXME\|HACK" tools/  # No placeholders
+```
+
+### Commit Standards
+
+Use conventional commits. One logical change per commit.
+
+| Prefix | Use for |
+|--------|---------|
+| `feat:` | New feature |
+| `fix:` | Bug fix |
+| `refactor:` | Code restructuring |
+| `test:` | Adding/updating tests |
+| `docs:` | Documentation |
+| `chore:` | Config, dependencies |
+
+**Format:** `type: short description of what and why`
+
+Examples:
+```
+feat: add GSTIN detection for Indian tax IDs
+fix: reduce false positives in DATE_TIME regex
+test: add adversarial cases for address detection
+```
+
+### Context Management
+
+Context degrades over long sessions. Manage it:
+
+1. **Clear between unrelated tasks** — Don't let old context pollute new work
+2. **Use subagents for investigation** — Research in isolated context, report back summary
+3. **Document progress in STATE.md** — Write findings, clear context, resume fresh
+4. **Fresh context for execution** — Each task benefits from clean context
+
+**Signs of degraded context:**
+- Repeating earlier decisions
+- Forgetting previous instructions
+- Quality drops compared to session start
+- Introducing contradictory patterns
+
+**Fix:** Clear and restart with focused prompt + written summary.
+
+### AI Discipline Checklist
+
+Before writing code, verify:
+- [ ] I've READ the files I'm about to modify
+- [ ] I'm NOT hallucinating APIs/libraries (checked docs)
+- [ ] I'm NOT over-engineering (solving only what's asked)
+- [ ] I'm NOT leaving dead code (no unused imports/files)
+- [ ] I'm NOT adding unnecessary dependencies
+
+### Quick Reference
+
+```
+WORKFLOW:    Discover → Plan → Execute → Verify → Ship
+COMMITS:     feat: | fix: | refactor: | test: | docs: | chore:
+VERIFY:      Exists? → Substantive? → Wired? → Tests pass?
+CONTEXT:     Clear between tasks. Subagents for research. Document progress.
+```
