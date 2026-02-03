@@ -76,7 +76,7 @@
     position: relative;
   }
   .sidebar {
-    width: 380px;
+    width: 340px;
     flex-shrink: 0;
     position: sticky;
     top: 2rem;
@@ -110,7 +110,7 @@
     margin-bottom: 1.5rem;
   }
 
-  /* ── Textarea ─────────────────────────────────────────────── */
+  /* ── Labels & Hints ─────────────────────────────────────────── */
   label {
     display: block;
     font-size: 0.85rem;
@@ -121,6 +121,13 @@
     margin-bottom: 0.6rem;
   }
 
+  .hint {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin-bottom: 1rem;
+  }
+
+  /* ── Textarea ─────────────────────────────────────────────── */
   textarea {
     width: 100%;
     min-height: 160px;
@@ -144,7 +151,7 @@
     color: rgba(255, 255, 255, 0.25);
   }
 
-  /* ── Button ───────────────────────────────────────────────── */
+  /* ── Buttons ───────────────────────────────────────────────── */
   .btn-row {
     display: flex;
     gap: 0.75rem;
@@ -180,9 +187,29 @@
     color: #e0e0e0;
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
-  .btn-secondary:hover {
+  .btn-secondary:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.12);
   }
+
+  .btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+  }
+  .btn-success:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  }
+
+  .btn-link {
+    background: none;
+    border: none;
+    color: rgba(167, 139, 250, 0.7);
+    font-size: 0.8rem;
+    padding: 0.3rem 0.5rem;
+    cursor: pointer;
+    flex: 0;
+  }
+  .btn-link:hover { color: #a78bfa; }
 
   /* ── Loading spinner ──────────────────────────────────────── */
   .spinner {
@@ -197,7 +224,112 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── Results ──────────────────────────────────────────────── */
+  /* ── Review Panel ──────────────────────────────────────────── */
+  .review-panel { display: none; }
+  .review-panel.visible { display: block; }
+
+  .category-section {
+    margin-bottom: 1rem;
+    border-left: 3px solid rgba(255, 255, 255, 0.1);
+    padding-left: 1rem;
+  }
+
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0;
+    cursor: pointer;
+  }
+  .category-header input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #7c3aed;
+  }
+  .category-header .cat-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #e0e0e0;
+  }
+  .category-header .cat-count {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.08);
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+  }
+  .category-header .confidence-indicator {
+    font-size: 0.65rem;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    margin-left: auto;
+  }
+  .confidence-indicator.high { background: rgba(16,185,129,0.25); color: #6ee7b7; }
+  .confidence-indicator.medium { background: rgba(245,158,11,0.25); color: #fcd34d; }
+  .confidence-indicator.mixed { background: rgba(139,92,246,0.25); color: #c4b5fd; }
+
+  .entity-list {
+    padding-left: 1.5rem;
+    margin-top: 0.3rem;
+  }
+
+  .entity-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    font-size: 0.85rem;
+    border-left: 3px solid transparent;
+    padding-left: 0.5rem;
+    margin-left: -0.5rem;
+  }
+  .entity-item.high { border-left-color: #6ee7b7; }
+  .entity-item.medium { border-left-color: #fcd34d; }
+  .entity-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #7c3aed;
+  }
+  .entity-item .entity-value {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    color: #fca5a5;
+    word-break: break-all;
+  }
+  .entity-item .entity-meta {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.35);
+    margin-left: auto;
+  }
+
+  /* Preference controls */
+  .pref-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 1.2rem 0;
+    padding: 0.6rem 0.8rem;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    font-size: 0.8rem;
+  }
+  .pref-controls label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: normal;
+    text-transform: none;
+    letter-spacing: normal;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+  }
+  .pref-controls input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: #7c3aed;
+  }
+
+  /* ── Results Panel ──────────────────────────────────────────── */
   .results { display: none; }
   .results.visible { display: block; }
 
@@ -262,55 +394,9 @@
   .pii-ADDRESS         { background: rgba(139, 92, 246, 0.25); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); }
   .pii-ORGANIZATION    { background: rgba(14, 165, 233, 0.25); color: #7dd3fc; border: 1px solid rgba(14,165,233,0.3); }
   .pii-LOCATION        { background: rgba(20, 184, 166, 0.25); color: #5eead4; border: 1px solid rgba(20,184,166,0.3); }
+  .pii-API_KEY         { background: rgba(239, 68, 68, 0.25); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .pii-CREDENTIAL      { background: rgba(239, 68, 68, 0.25); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
   .pii-default         { background: rgba(148, 163, 184, 0.25); color: #cbd5e1; border: 1px solid rgba(148,163,184,0.3); }
-
-  /* Mapping table */
-  .mapping-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 0.85rem;
-  }
-  .mapping-table th {
-    text-align: left;
-    padding: 0.6rem 0.8rem;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(255,255,255,0.4);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-  }
-  .mapping-table td {
-    padding: 0.5rem 0.8rem;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
-  }
-  .mapping-table tr:last-child td { border-bottom: none; }
-  .mapping-table .placeholder { color: #a78bfa; }
-  .mapping-table .original { color: #fca5a5; }
-
-  /* Detection details table */
-  .details-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 0.82rem;
-  }
-  .details-table th {
-    text-align: left;
-    padding: 0.6rem 0.6rem;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(255,255,255,0.4);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-  }
-  .details-table td {
-    padding: 0.5rem 0.6rem;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
-  }
-  .details-table tr:last-child td { border-bottom: none; }
 
   .source-badge {
     display: inline-block;
@@ -322,156 +408,103 @@
   }
   .source-regex    { background: rgba(245,158,11,0.25); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
   .source-presidio { background: rgba(59,130,246,0.25); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
-  .source-llm      { background: rgba(16,185,129,0.25); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
 
-  .conf-value { color: #a78bfa; font-weight: 600; }
-  .conf-arrow { color: rgba(255,255,255,0.3); margin: 0 0.3em; }
-  .llm-label  { font-size: 0.7rem; color: rgba(255,255,255,0.3); }
-
-  /* ── Flowchart Sidebar ──────────────────────────────────────── */
-  .flowchart-card { padding: 1.5rem; }
-  .flowchart-card h2 {
-    font-size: 1rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(255,255,255,0.5);
-    margin-bottom: 1.2rem;
-    text-align: center;
-  }
-
-  .flow-pipeline { display: flex; flex-direction: column; align-items: center; gap: 0; }
-
-  .flow-node {
-    width: 100%;
-    padding: 0.7rem 0.9rem;
-    border-radius: 12px;
-    text-align: center;
-    font-size: 0.8rem;
-    font-weight: 600;
-    line-height: 1.4;
-    position: relative;
-  }
-  .flow-node .flow-sub {
-    display: block;
-    font-size: 0.7rem;
-    font-weight: 400;
-    color: rgba(255,255,255,0.45);
-    margin-top: 0.15rem;
-  }
-
-  .flow-input {
-    background: rgba(139,92,246,0.2);
-    border: 1px solid rgba(139,92,246,0.35);
-    color: #c4b5fd;
-  }
-  .flow-regex {
-    background: rgba(245,158,11,0.2);
-    border: 1px solid rgba(245,158,11,0.35);
-    color: #fcd34d;
-  }
-  .flow-presidio {
-    background: rgba(59,130,246,0.2);
-    border: 1px solid rgba(59,130,246,0.35);
-    color: #93c5fd;
-  }
-  .flow-merge {
-    background: rgba(20,184,166,0.2);
-    border: 1px solid rgba(20,184,166,0.35);
-    color: #5eead4;
-  }
-  .flow-llm {
-    background: rgba(16,185,129,0.2);
-    border: 1px solid rgba(16,185,129,0.35);
-    color: #6ee7b7;
-  }
-  .flow-threshold {
-    background: rgba(236,72,153,0.2);
-    border: 1px solid rgba(236,72,153,0.35);
-    color: #f9a8d4;
-  }
-  .flow-output {
-    background: rgba(99,102,241,0.2);
-    border: 1px solid rgba(99,102,241,0.35);
-    color: #a5b4fc;
-  }
-
-  .flow-arrow {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0.15rem 0;
-    color: rgba(255,255,255,0.2);
-    font-size: 0.85rem;
-    line-height: 1;
-  }
-  .flow-arrow::before { content: '|'; }
-  .flow-arrow::after  { content: '\25BC'; font-size: 0.7rem; margin-top: -2px; }
-
-  .flow-condition {
-    font-size: 0.65rem;
-    color: rgba(255,255,255,0.35);
-    text-align: center;
-    padding: 0;
-    font-style: italic;
-  }
-
-  /* Roadmap section */
-  .flow-divider {
-    width: 100%;
-    border: none;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    margin: 1.2rem 0 1rem;
-  }
-  .roadmap-title {
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(255,255,255,0.4);
-    margin-bottom: 0.8rem;
-    text-align: center;
-  }
-  .roadmap-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-  .roadmap-list li {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    font-size: 0.75rem;
-    color: rgba(255,255,255,0.5);
-    padding: 0.35rem 0;
-    line-height: 1.4;
-  }
-  .roadmap-list li .rm-icon {
-    flex-shrink: 0;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    display: flex;
+  /* ── AI Modal ──────────────────────────────────────────────── */
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    display: none;
     align-items: center;
     justify-content: center;
-    font-size: 0.6rem;
-    margin-top: 1px;
+    z-index: 1000;
   }
-  .rm-done { background: rgba(16,185,129,0.25); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
-  .rm-current { background: rgba(245,158,11,0.25); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
-  .rm-future { background: rgba(148,163,184,0.15); color: rgba(255,255,255,0.3); border: 1px solid rgba(148,163,184,0.2); }
+  .modal.visible { display: flex; }
 
-  /* ── Footer ───────────────────────────────────────────────── */
-  footer {
-    text-align: center;
-    margin-top: 1rem;
-    color: rgba(255,255,255,0.25);
-    font-size: 0.8rem;
-    z-index: 1;
-    position: relative;
+  .modal-content {
+    width: 90%;
+    max-width: 500px;
+    padding: 2rem;
+    max-height: 90vh;
+    overflow-y: auto;
   }
-  footer a { color: rgba(167, 139, 250, 0.6); text-decoration: none; }
-  footer a:hover { color: #a78bfa; }
+  .modal-content h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1.2rem;
+    background: linear-gradient(135deg, #a78bfa, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .modal-content select,
+  .modal-content input[type="text"],
+  .modal-content input[type="password"] {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .modal-content select:focus,
+  .modal-content input:focus {
+    outline: none;
+    border-color: rgba(167, 139, 250, 0.5);
+  }
+
+  .modal-content textarea {
+    min-height: 100px;
+    margin-bottom: 1rem;
+  }
+
+  .modal-content details {
+    margin-bottom: 1rem;
+  }
+  .modal-content summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.5rem;
+  }
+
+  /* ── AI Response Panel ──────────────────────────────────────── */
+  .ai-response-panel { display: none; }
+  .ai-response-panel.visible { display: block; }
+
+  .ai-response-content {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1rem;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* ── Notification Toast ──────────────────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: rgba(16, 185, 129, 0.9);
+    color: #fff;
+    padding: 0.8rem 1.5rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    z-index: 2000;
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
+  .toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 
   /* ── Error ────────────────────────────────────────────────── */
   .error-msg {
@@ -486,13 +519,88 @@
   }
   .error-msg.visible { display: block; }
 
+  /* ── Sidebar: How It Works ──────────────────────────────────── */
+  .info-card { padding: 1.5rem; }
+  .info-card h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .info-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .info-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.6);
+    padding: 0.5rem 0;
+    line-height: 1.5;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .info-list li:last-child { border-bottom: none; }
+  .info-list .step-num {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(139,92,246,0.25);
+    color: #c4b5fd;
+    border: 1px solid rgba(139,92,246,0.3);
+  }
+
+  .info-divider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin: 1rem 0;
+  }
+
+  .info-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  .feature-tag {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 15px;
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.5);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* ── Footer ───────────────────────────────────────────────── */
+  footer {
+    text-align: center;
+    margin-top: 1rem;
+    color: rgba(255,255,255,0.25);
+    font-size: 0.8rem;
+    z-index: 1;
+    position: relative;
+  }
+  footer a { color: rgba(167, 139, 250, 0.6); text-decoration: none; }
+  footer a:hover { color: #a78bfa; }
+
   /* ── Responsive ───────────────────────────────────────────── */
   @media (max-width: 1100px) {
     .page-layout { flex-direction: column; align-items: center; }
     .sidebar { width: 100%; max-width: 800px; position: static; }
   }
   @media (max-width: 600px) {
-    /* Disable animated orbs — they cause scroll-lock on mobile */
     body::before, body::after { display: none; }
     body { padding: 1rem 0.5rem; }
     h1 { font-size: 1.6rem; }
@@ -502,47 +610,12 @@
     .btn-row { flex-direction: column; }
     .stats-bar { gap: 1rem; }
     textarea { min-height: 120px; font-size: 0.82rem; padding: 0.8rem; border-radius: 10px; }
-    .redacted-output { font-size: 0.78rem; padding: 0.8rem; border-radius: 10px; line-height: 1.6; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .redacted-output { font-size: 0.78rem; padding: 0.8rem; border-radius: 10px; line-height: 1.6; }
     .pii-tag { font-size: 0.72rem; padding: 0.1em 0.35em; }
-
-    /* Stack detection details as cards instead of a wide table */
-    .details-table thead { display: none; }
-    .details-table, .details-table tbody { display: block; width: 100%; }
-    .details-table tr {
-      display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem;
-      padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.06);
-      align-items: center;
-    }
-    .details-table tr:last-child { border-bottom: none; }
-    .details-table td { display: inline; padding: 0; border: none; font-size: 0.75rem; }
-    .details-table td:first-child { width: 100%; word-break: break-all; color: #fca5a5; margin-bottom: 0.1rem; }
-
-    /* Mapping table — stack vertically */
-    .mapping-table thead { display: none; }
-    .mapping-table, .mapping-table tbody { display: block; width: 100%; }
-    .mapping-table tr {
-      display: flex; flex-direction: column; gap: 0.15rem;
-      padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    .mapping-table tr:last-child { border-bottom: none; }
-    .mapping-table td { display: block; padding: 0; border: none; font-size: 0.75rem; word-break: break-all; }
-
-    .source-badge { font-size: 0.65rem; padding: 0.1em 0.35em; }
-    .conf-value { font-size: 0.75rem; }
-
-    /* Flowchart sidebar compact */
-    .flowchart-card { padding: 1rem; }
-    .flowchart-card h2 { font-size: 0.85rem; margin-bottom: 0.8rem; }
-    .flow-node { padding: 0.5rem 0.7rem; font-size: 0.72rem; border-radius: 10px; }
-    .flow-node .flow-sub { font-size: 0.62rem; }
-    .flow-condition { font-size: 0.58rem; }
-    .roadmap-list li { font-size: 0.68rem; }
-
     button { padding: 0.75rem 1rem; font-size: 0.9rem; }
     label { font-size: 0.78rem; }
-
-    /* Ensure page-layout children don't overflow */
     .container, .sidebar { max-width: 100%; overflow: hidden; }
+    .modal-content { padding: 1.5rem; }
   }
 </style>
 </head>
@@ -550,175 +623,244 @@
 
 <header>
   <h1>PrivaSend</h1>
-  <p>Paste text below to detect and redact personally identifiable information</p>
+  <p>Detect, review, and redact personally identifiable information</p>
 </header>
 
 <div class="page-layout">
 
   <!-- LEFT: Main content -->
   <div class="container">
-    <!-- Input -->
+    <!-- Input Card -->
     <div class="glass card">
       <label for="input-text">Input Text</label>
       <textarea id="input-text" placeholder="Paste text containing PII here...&#10;&#10;Example: My name is John Smith, email john@example.com, SSN 123-45-6789"></textarea>
       <div class="btn-row">
-        <button class="btn-primary" id="btn-redact" onclick="handleRedact()">Redact PII</button>
-        <button class="btn-secondary" onclick="handleClear()">Clear</button>
+        <button class="btn-primary" id="btn-analyze">Analyze PII</button>
+        <button class="btn-secondary" id="btn-clear">Clear</button>
       </div>
       <div class="error-msg" id="error-msg"></div>
     </div>
 
-    <!-- Results -->
-    <div class="results" id="results">
+    <!-- Review Panel (hidden until analysis) -->
+    <div class="glass card review-panel" id="review-panel">
+      <label>Review Detected PII</label>
+      <p class="hint">High-confidence items are pre-selected. Uncheck items you don't want to redact.</p>
+
+      <div id="categories-container"></div>
+
+      <div class="pref-controls">
+        <label>
+          <input type="checkbox" id="persist-prefs">
+          Remember my preferences
+        </label>
+        <button class="btn-link" id="btn-reset-prefs">Reset to defaults</button>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-primary" id="btn-redact-only">Redact Only</button>
+        <button class="btn-success" id="btn-send-ai">Send to AI</button>
+      </div>
+    </div>
+
+    <!-- Results Panel (after redaction) -->
+    <div class="results" id="results-panel">
       <div class="glass card">
-        <label>Results</label>
+        <label>Redacted Output</label>
         <div class="stats-bar">
           <div class="stat">
             <span class="stat-value" id="stat-count">0</span>
-            <span class="stat-label">PII Found</span>
+            <span class="stat-label">PII Redacted</span>
           </div>
           <div class="stat">
             <span class="stat-value" id="stat-time">0</span>
             <span class="stat-label">ms</span>
           </div>
         </div>
-
-        <label>Redacted Text</label>
         <div class="redacted-output" id="redacted-output"></div>
-
-        <div id="details-section" style="display:none;">
-          <label>Detection Details</label>
-          <table class="details-table">
-            <thead><tr><th>Entity</th><th>Type</th><th>Detected By</th><th>Confidence</th></tr></thead>
-            <tbody id="details-body"></tbody>
-          </table>
+        <div class="btn-row">
+          <button class="btn-secondary" id="btn-copy">Copy to Clipboard</button>
+          <button class="btn-secondary" id="btn-new">Start Over</button>
         </div>
+      </div>
+    </div>
 
-        <div id="mapping-section" style="display:none;">
-          <label>Mapping (reversible)</label>
-          <table class="mapping-table">
-            <thead><tr><th>Placeholder</th><th>Original Value</th></tr></thead>
-            <tbody id="mapping-body"></tbody>
-          </table>
-        </div>
+    <!-- AI Response Panel -->
+    <div class="glass card ai-response-panel" id="ai-response-panel">
+      <label>AI Response</label>
+      <div class="ai-response-content" id="ai-response-content"></div>
+      <div class="btn-row" style="margin-top: 1rem;">
+        <button class="btn-secondary" id="btn-copy-ai">Copy Response</button>
       </div>
     </div>
   </div>
 
-  <!-- RIGHT: Flowchart sidebar -->
+  <!-- RIGHT: Sidebar -->
   <aside class="sidebar">
-    <div class="glass flowchart-card">
+    <div class="glass info-card">
       <h2>How It Works</h2>
-
-      <div class="flow-pipeline">
-        <div class="flow-node flow-input">
-          Input Text
-          <span class="flow-sub">Plain text (MVP)</span>
-        </div>
-
-        <div class="flow-arrow"></div>
-
-        <div class="flow-node flow-regex">
-          Layer 1: Regex Engine
-          <span class="flow-sub">51 patterns &bull; &lt;10ms &bull; Emails, phones, SSN, Aadhaar, PAN, credit cards, API keys&hellip;</span>
-        </div>
-
-        <div class="flow-arrow"></div>
-
-        <div class="flow-node flow-presidio">
-          Layer 2: Presidio + spaCy NER
-          <span class="flow-sub">ML-based &bull; ~200ms &bull; Names, addresses, orgs, locations + Indian address recognizer</span>
-        </div>
-
-        <div class="flow-arrow"></div>
-
-        <div class="flow-node flow-merge">
-          Merge &amp; Deduplicate
-          <span class="flow-sub">Combine both layers, resolve overlaps, keep highest confidence</span>
-        </div>
-
-        <div class="flow-arrow"></div>
-        <div class="flow-condition">only if 0.60 &le; confidence &le; 0.85</div>
-
-        <div class="flow-node flow-llm">
-          Layer 3: LLM Validator
-          <span class="flow-sub">Ollama llama3:8b &bull; Binary PII validation &bull; JSON only &bull; Fail-open</span>
-        </div>
-
-        <div class="flow-arrow"></div>
-        <div class="flow-condition">final = 0.6 &times; detector + 0.4 &times; LLM</div>
-
-        <div class="flow-node flow-threshold">
-          Confidence Threshold
-          <span class="flow-sub">&ge; 0.65 &rarr; redact &bull; &lt; 0.65 &rarr; skip</span>
-        </div>
-
-        <div class="flow-arrow"></div>
-
-        <div class="flow-node flow-output">
-          Output
-          <span class="flow-sub">Redacted text + reversible [TYPE_N] mapping + audit log</span>
-        </div>
-      </div>
-
-      <hr class="flow-divider">
-      <div class="roadmap-title">Roadmap</div>
-      <ul class="roadmap-list">
-        <li><span class="rm-icon rm-done">&#10003;</span> Phase 1A &mdash; Detection engine (regex + Presidio + spaCy)</li>
-        <li><span class="rm-icon rm-done">&#10003;</span> Phase 1C &mdash; FastAPI server + API endpoints</li>
-        <li><span class="rm-icon rm-done">&#10003;</span> Phase 1D &mdash; Web frontend</li>
-        <li><span class="rm-icon rm-current">&#9679;</span> LLM validation layer (Ollama llama3:8b)</li>
-        <li><span class="rm-icon rm-current">&#9679;</span> Indian address &amp; locality detection</li>
-        <li><span class="rm-icon rm-future">&#9675;</span> Phase 1B &mdash; PDF, DOCX, image/OCR input</li>
-        <li><span class="rm-icon rm-future">&#9675;</span> Video frame scanning &amp; audio transcription</li>
-        <li><span class="rm-icon rm-future">&#9675;</span> Send to AI &mdash; redact &rarr; LLM &rarr; de-redact</li>
-        <li><span class="rm-icon rm-future">&#9675;</span> n8n workflow integration</li>
-        <li><span class="rm-icon rm-future">&#9675;</span> Cloud deploy, auth &amp; multi-tenancy</li>
+      <ul class="info-list">
+        <li>
+          <span class="step-num">1</span>
+          <span>Paste your text and click <strong>Analyze PII</strong></span>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <span>Review detected PII by category. High-confidence items are pre-selected.</span>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <span>Choose <strong>Redact Only</strong> to copy redacted text, or <strong>Send to AI</strong> to chat with an AI using your redacted content.</span>
+        </li>
       </ul>
+
+      <hr class="info-divider">
+
+      <div class="info-features">
+        <span class="feature-tag">Regex + NER</span>
+        <span class="feature-tag">25+ PII Types</span>
+        <span class="feature-tag">Confidence Scoring</span>
+        <span class="feature-tag">Category Toggles</span>
+        <span class="feature-tag">GPT-4 / Claude / Gemini</span>
+      </div>
     </div>
   </aside>
 
 </div>
 
+<!-- AI Modal -->
+<div class="modal" id="ai-modal">
+  <div class="glass modal-content">
+    <h3>Send to AI</h3>
+
+    <label for="ai-model">Select AI Model</label>
+    <select id="ai-model">
+      <option value="openai/gpt-4o-mini">GPT-4o Mini (Fast)</option>
+      <option value="openai/gpt-4o">GPT-4o (Best)</option>
+      <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+      <option value="google/gemini-pro">Gemini Pro</option>
+    </select>
+
+    <label for="ai-prompt">Your Prompt</label>
+    <textarea id="ai-prompt" placeholder="What would you like the AI to do with this text?&#10;&#10;Example: Summarize the main points of this document."></textarea>
+
+    <details>
+      <summary>Use your own API key (optional)</summary>
+      <input type="password" id="user-api-key" placeholder="OpenRouter API key">
+    </details>
+
+    <div class="btn-row">
+      <button class="btn-success" id="btn-submit-ai">Send</button>
+      <button class="btn-secondary" id="btn-cancel-ai">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
 <footer>
-  PrivaSend &mdash; PII Detection &amp; Redaction Engine
+  PrivaSend &mdash; Privacy-First PII Detection & Redaction
 </footer>
 
 <script>
-const inputEl = document.getElementById('input-text');
-const btnEl   = document.getElementById('btn-redact');
-const resultEl = document.getElementById('results');
-const errorEl  = document.getElementById('error-msg');
+// ═══════════════════════════════════════════════════════════════════════════
+// State Management
+// ═══════════════════════════════════════════════════════════════════════════
 
-// PII type → CSS class mapping
-const PII_CLASSES = [
-  'EMAIL','PHONE','SSN','CREDIT_CARD','PERSON','ADDRESS',
-  'ORGANIZATION','LOCATION'
-];
+const state = {
+  text: '',
+  entities: [],
+  categories: {},
+  categoryOrder: [],
+  highConfidenceIndices: [],
+  selected: new Set(),
+  prefs: {},
+  redactedText: '',
+  mapping: {},
+};
 
+// Load preferences from localStorage
+function loadPreferences() {
+  try {
+    const saved = localStorage.getItem('privasend_prefs');
+    if (saved) state.prefs = JSON.parse(saved);
+  } catch (e) {
+    state.prefs = {};
+  }
+}
+
+function savePreferences() {
+  if (document.getElementById('persist-prefs').checked) {
+    localStorage.setItem('privasend_prefs', JSON.stringify(state.prefs));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UI Helpers
+// ═══════════════════════════════════════════════════════════════════════════
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('error-msg').classList.remove('visible');
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('visible');
+  setTimeout(() => toast.classList.remove('visible'), 2500);
+}
+
+function setLoading(btn, loading, text) {
+  btn.disabled = loading;
+  btn.innerHTML = loading ? `<span class="spinner"></span>${text}` : text;
+}
+
+// PII type to CSS class
+const PII_CLASSES = ['EMAIL','PHONE','SSN','CREDIT_CARD','PERSON','ADDRESS','ORGANIZATION','LOCATION','API_KEY','CREDENTIAL'];
 function piiClass(type) {
   return PII_CLASSES.includes(type) ? `pii-${type}` : 'pii-default';
 }
 
-function showError(msg) {
-  errorEl.textContent = msg;
-  errorEl.classList.add('visible');
-}
-function hideError() {
-  errorEl.classList.remove('visible');
+// Get category for a PII type (server provides this, but fallback)
+function getCategory(piiType) {
+  for (const [cat, indices] of Object.entries(state.categories)) {
+    for (const idx of indices) {
+      if (state.entities[idx]?.pii_type === piiType) return cat;
+    }
+  }
+  return 'Other';
 }
 
-async function handleRedact() {
-  const text = inputEl.value.trim();
-  if (!text) { showError('Please enter some text.'); return; }
+// ═══════════════════════════════════════════════════════════════════════════
+// Core Functions
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function handleAnalyze() {
+  const text = document.getElementById('input-text').value.trim();
+  if (!text) {
+    showError('Please enter some text.');
+    return;
+  }
   hideError();
+  state.text = text;
 
-  // Loading state
-  btnEl.disabled = true;
-  btnEl.innerHTML = '<span class="spinner"></span>Analyzing...';
+  const btn = document.getElementById('btn-analyze');
+  setLoading(btn, true, 'Analyzing...');
 
   try {
-    const res = await fetch('/api/redact', {
+    const res = await fetch('/api/analyze-for-review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
@@ -730,105 +872,333 @@ async function handleRedact() {
     }
 
     const data = await res.json();
-    renderResults(data);
+    state.entities = data.entities;
+    state.categories = data.categories;
+    state.categoryOrder = data.category_order;
+    state.highConfidenceIndices = data.high_confidence_indices;
+
+    applyDefaults();
+    renderReviewPanel();
+
+    document.getElementById('review-panel').classList.add('visible');
+    document.getElementById('results-panel').classList.remove('visible');
+    document.getElementById('ai-response-panel').classList.remove('visible');
+
   } catch (e) {
     showError(e.message || 'Something went wrong.');
-    resultEl.classList.remove('visible');
   } finally {
-    btnEl.disabled = false;
-    btnEl.textContent = 'Redact PII';
+    setLoading(btn, false, 'Analyze PII');
+  }
+}
+
+function applyDefaults() {
+  state.selected.clear();
+
+  // Pre-select high-confidence entities
+  for (const idx of state.highConfidenceIndices) {
+    state.selected.add(idx);
+  }
+
+  // Apply saved category preferences
+  for (const [cat, enabled] of Object.entries(state.prefs)) {
+    if (state.categories[cat]) {
+      for (const idx of state.categories[cat]) {
+        if (enabled) {
+          // If pref says enabled, add medium confidence too
+          if (state.entities[idx].confidence >= 0.50) {
+            state.selected.add(idx);
+          }
+        } else {
+          // If pref says disabled, remove all
+          state.selected.delete(idx);
+        }
+      }
+    }
+  }
+}
+
+function renderReviewPanel() {
+  const container = document.getElementById('categories-container');
+  container.innerHTML = '';
+
+  for (const cat of state.categoryOrder) {
+    const indices = state.categories[cat];
+    if (!indices || indices.length === 0) continue;
+
+    const section = document.createElement('div');
+    section.className = 'category-section';
+
+    // Determine overall confidence level for category
+    const hasHigh = indices.some(i => state.entities[i].confidence >= 0.85);
+    const hasMedium = indices.some(i => state.entities[i].confidence >= 0.50 && state.entities[i].confidence < 0.85);
+    let confLevel = 'medium';
+    if (hasHigh && hasMedium) confLevel = 'mixed';
+    else if (hasHigh) confLevel = 'high';
+
+    // Count selected
+    const selectedCount = indices.filter(i => state.selected.has(i)).length;
+    const allSelected = selectedCount === indices.length;
+
+    section.innerHTML = `
+      <div class="category-header">
+        <input type="checkbox" id="cat-${cat}" ${allSelected ? 'checked' : ''} data-cat="${cat}">
+        <span class="cat-name">${cat}</span>
+        <span class="cat-count">${selectedCount}/${indices.length}</span>
+        <span class="confidence-indicator ${confLevel}">${confLevel.toUpperCase()}</span>
+      </div>
+      <div class="entity-list" id="entities-${cat}"></div>
+    `;
+
+    const entityList = section.querySelector('.entity-list');
+    for (const idx of indices) {
+      const e = state.entities[idx];
+      const conf = e.confidence >= 0.85 ? 'high' : 'medium';
+      const checked = state.selected.has(idx) ? 'checked' : '';
+
+      const item = document.createElement('div');
+      item.className = `entity-item ${conf}`;
+      item.innerHTML = `
+        <input type="checkbox" ${checked} data-idx="${idx}">
+        <span class="entity-value">${escapeHtml(e.value)}</span>
+        <span class="entity-meta">${e.pii_type} | ${(e.confidence * 100).toFixed(0)}%</span>
+      `;
+      entityList.appendChild(item);
+    }
+
+    container.appendChild(section);
+  }
+
+  // Add event listeners
+  container.querySelectorAll('.category-header input').forEach(cb => {
+    cb.addEventListener('change', (e) => toggleCategory(e.target.dataset.cat, e.target.checked));
+  });
+  container.querySelectorAll('.entity-item input').forEach(cb => {
+    cb.addEventListener('change', (e) => toggleEntity(parseInt(e.target.dataset.idx), e.target.checked));
+  });
+}
+
+function toggleCategory(cat, checked) {
+  const indices = state.categories[cat] || [];
+  for (const idx of indices) {
+    if (checked) state.selected.add(idx);
+    else state.selected.delete(idx);
+  }
+  state.prefs[cat] = checked;
+  savePreferences();
+  renderReviewPanel();
+}
+
+function toggleEntity(idx, checked) {
+  if (checked) state.selected.add(idx);
+  else state.selected.delete(idx);
+  renderReviewPanel();
+}
+
+function resetPreferences() {
+  state.prefs = {};
+  localStorage.removeItem('privasend_prefs');
+  document.getElementById('persist-prefs').checked = false;
+  applyDefaults();
+  renderReviewPanel();
+  showToast('Preferences reset to defaults');
+}
+
+async function handleRedactOnly() {
+  if (state.selected.size === 0) {
+    showError('Please select at least one item to redact.');
+    return;
+  }
+  hideError();
+
+  const btn = document.getElementById('btn-redact-only');
+  setLoading(btn, true, 'Redacting...');
+
+  try {
+    const res = await fetch('/api/redact-selected', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: state.text,
+        selected_indices: [...state.selected],
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Server error (${res.status})`);
+    }
+
+    const data = await res.json();
+    state.redactedText = data.redacted_text;
+    state.mapping = data.mapping;
+
+    renderResults(data);
+
+    // Copy to clipboard
+    await navigator.clipboard.writeText(data.redacted_text);
+    showToast('Redacted text copied to clipboard!');
+
+  } catch (e) {
+    showError(e.message || 'Something went wrong.');
+  } finally {
+    setLoading(btn, false, 'Redact Only');
   }
 }
 
 function renderResults(data) {
-  // Stats
   document.getElementById('stat-count').textContent = data.entity_count;
   document.getElementById('stat-time').textContent = Math.round(data.elapsed_ms);
 
   // Redacted text with colored tags
-  const output = document.getElementById('redacted-output');
   let html = escapeHtml(data.redacted_text);
-
-  // Highlight placeholders like [EMAIL_1]
   html = html.replace(/\[([A-Z_]+)_(\d+)\]/g, (match, type) => {
     const cls = piiClass(type);
     return `<span class="pii-tag ${cls}">${match}</span>`;
   });
-  output.innerHTML = html;
+  document.getElementById('redacted-output').innerHTML = html;
 
-  // Detection details table
-  const detailsBody = document.getElementById('details-body');
-  const detailsSection = document.getElementById('details-section');
-  detailsBody.innerHTML = '';
+  document.getElementById('review-panel').classList.remove('visible');
+  document.getElementById('results-panel').classList.add('visible');
+}
 
-  if (data.entities && data.entities.length > 0) {
-    detailsSection.style.display = 'block';
-    for (const e of data.entities) {
-      const tr = document.createElement('tr');
-      const typeTag = `<span class="pii-tag ${piiClass(e.pii_type)}">${escapeHtml(e.pii_type)}</span>`;
+function openAIModal() {
+  if (state.selected.size === 0) {
+    showError('Please select at least one item to redact before sending to AI.');
+    return;
+  }
+  hideError();
+  document.getElementById('ai-modal').classList.add('visible');
+}
 
-      // Source badge
-      const srcClass = e.source === 'regex' ? 'source-regex' : 'source-presidio';
-      const srcLabel = e.source === 'regex' ? 'Regex' : 'Presidio';
-      let sourceHtml = `<span class="source-badge ${srcClass}">${srcLabel}</span>`;
-      if (e.llm_validated) {
-        sourceHtml += ` <span class="conf-arrow">\u2192</span> <span class="source-badge source-llm">LLM</span>`;
-      }
+function closeAIModal() {
+  document.getElementById('ai-modal').classList.remove('visible');
+}
 
-      // Confidence display
-      let confHtml = '';
-      if (e.llm_validated && e.pre_llm_confidence != null) {
-        confHtml = `<span class="conf-value">${e.pre_llm_confidence.toFixed(2)}</span>`
-                 + `<span class="conf-arrow">\u2192</span>`
-                 + `<span class="conf-value">${e.confidence.toFixed(2)}</span>`
-                 + ` <span class="llm-label">LLM</span>`;
-      } else {
-        confHtml = `<span class="conf-value">${e.confidence.toFixed(2)}</span>`;
-      }
+async function handleSendToAI() {
+  const model = document.getElementById('ai-model').value;
+  const prompt = document.getElementById('ai-prompt').value.trim();
+  const apiKey = document.getElementById('user-api-key').value.trim() || null;
 
-      tr.innerHTML = `<td class="original">${escapeHtml(e.value)}</td><td>${typeTag}</td><td>${sourceHtml}</td><td>${confHtml}</td>`;
-      detailsBody.appendChild(tr);
-    }
-  } else {
-    detailsSection.style.display = 'none';
+  if (!prompt) {
+    alert('Please enter a prompt.');
+    return;
   }
 
-  // Mapping table
-  const tbody = document.getElementById('mapping-body');
-  const section = document.getElementById('mapping-section');
-  tbody.innerHTML = '';
+  closeAIModal();
 
-  const entries = Object.entries(data.mapping);
-  if (entries.length > 0) {
-    section.style.display = 'block';
-    for (const [placeholder, original] of entries) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="placeholder">${escapeHtml(placeholder)}</td><td class="original">${escapeHtml(original)}</td>`;
-      tbody.appendChild(tr);
+  const btn = document.getElementById('btn-send-ai');
+  setLoading(btn, true, 'Sending...');
+
+  try {
+    const res = await fetch('/api/send-to-ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: state.text,
+        selected_indices: [...state.selected],
+        model,
+        prompt,
+        api_key: apiKey,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Server error (${res.status})`);
     }
-  } else {
-    section.style.display = 'none';
-  }
 
-  resultEl.classList.add('visible');
+    const data = await res.json();
+
+    // Show redacted output
+    state.redactedText = data.redacted_input;
+    document.getElementById('stat-count').textContent = state.selected.size;
+    document.getElementById('stat-time').textContent = Math.round(data.elapsed_ms);
+
+    let html = escapeHtml(data.redacted_input);
+    html = html.replace(/\[([A-Z_]+)_(\d+)\]/g, (match, type) => {
+      const cls = piiClass(type);
+      return `<span class="pii-tag ${cls}">${match}</span>`;
+    });
+    document.getElementById('redacted-output').innerHTML = html;
+
+    // Show AI response
+    document.getElementById('ai-response-content').textContent = data.ai_response;
+
+    document.getElementById('review-panel').classList.remove('visible');
+    document.getElementById('results-panel').classList.add('visible');
+    document.getElementById('ai-response-panel').classList.add('visible');
+
+    showToast('AI response received!');
+
+  } catch (e) {
+    showError(e.message || 'Something went wrong.');
+  } finally {
+    setLoading(btn, false, 'Send to AI');
+  }
 }
 
 function handleClear() {
-  inputEl.value = '';
-  resultEl.classList.remove('visible');
+  document.getElementById('input-text').value = '';
+  document.getElementById('review-panel').classList.remove('visible');
+  document.getElementById('results-panel').classList.remove('visible');
+  document.getElementById('ai-response-panel').classList.remove('visible');
   hideError();
-  inputEl.focus();
+  state.text = '';
+  state.entities = [];
+  state.selected.clear();
+  document.getElementById('input-text').focus();
 }
 
-function escapeHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+function handleStartOver() {
+  document.getElementById('review-panel').classList.remove('visible');
+  document.getElementById('results-panel').classList.remove('visible');
+  document.getElementById('ai-response-panel').classList.remove('visible');
+  document.getElementById('input-text').focus();
 }
 
-// Allow Ctrl+Enter to submit
-inputEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleRedact();
+async function copyToClipboard(text, msg) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(msg);
+  } catch (e) {
+    showError('Failed to copy to clipboard');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Event Listeners
+// ═══════════════════════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadPreferences();
+
+  document.getElementById('btn-analyze').addEventListener('click', handleAnalyze);
+  document.getElementById('btn-clear').addEventListener('click', handleClear);
+  document.getElementById('btn-redact-only').addEventListener('click', handleRedactOnly);
+  document.getElementById('btn-send-ai').addEventListener('click', openAIModal);
+  document.getElementById('btn-reset-prefs').addEventListener('click', resetPreferences);
+
+  document.getElementById('btn-submit-ai').addEventListener('click', handleSendToAI);
+  document.getElementById('btn-cancel-ai').addEventListener('click', closeAIModal);
+
+  document.getElementById('btn-copy').addEventListener('click', () => {
+    copyToClipboard(state.redactedText, 'Copied to clipboard!');
+  });
+  document.getElementById('btn-new').addEventListener('click', handleStartOver);
+  document.getElementById('btn-copy-ai').addEventListener('click', () => {
+    const text = document.getElementById('ai-response-content').textContent;
+    copyToClipboard(text, 'AI response copied!');
+  });
+
+  // Close modal on backdrop click
+  document.getElementById('ai-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'ai-modal') closeAIModal();
+  });
+
+  // Ctrl+Enter to analyze
+  document.getElementById('input-text').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAnalyze();
+  });
 });
 </script>
 </body>

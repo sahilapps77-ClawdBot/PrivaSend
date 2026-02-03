@@ -30,6 +30,7 @@ Thumbs.db
 *.log
 credentials.json
 token.json
+security_audit_report.md
 
 # Tesseract / OCR temp
 *.tiff

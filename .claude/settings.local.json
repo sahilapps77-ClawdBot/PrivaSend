@@ -31,7 +31,11 @@
       "Bash(curl:*)",
       "Bash(dir /b \"d:\\\\PrivaSend\")",
       "Bash(set OLLAMA_URL=http://72.61.171.205:11434)",
-      "Bash(docker build:*)"
+      "Bash(docker build:*)",
+      "Bash(dir /b /o-d \"d:\\\\PrivaSend\")",
+      "Bash(git check-ignore:*)",
+      "Bash(where:*)",
+      "Bash(pre-commit install:*)"
     ]
   }
 }

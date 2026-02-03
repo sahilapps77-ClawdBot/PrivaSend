@@ -645,10 +645,42 @@ def _merge_results(
 # Public API
 # ---------------------------------------------------------------------------
 
+def bucket_entities(
+    entities: list[DetectedEntity],
+) -> dict[str, list[DetectedEntity]]:
+    """
+    Group entities by confidence level for user review UI.
+
+    Args:
+        entities: List of detected entities.
+
+    Returns:
+        Dictionary with keys:
+        - "high": entities with confidence >= 0.85 (pre-checked in UI)
+        - "medium": entities with 0.50 <= confidence < 0.85 (shown for review)
+        - "low": entities with confidence < 0.50 (ignored)
+    """
+    from tools.config import CONFIDENCE_HIGH, CONFIDENCE_LOW
+
+    buckets: dict[str, list[DetectedEntity]] = {
+        "high": [],
+        "medium": [],
+        "low": [],
+    }
+    for e in entities:
+        if e.confidence >= CONFIDENCE_HIGH:
+            buckets["high"].append(e)
+        elif e.confidence >= CONFIDENCE_LOW:
+            buckets["medium"].append(e)
+        else:
+            buckets["low"].append(e)
+    return buckets
+
+
 def detect(
     text: str,
     use_presidio: bool = True,
-    use_llm: bool = False,
+    use_llm: bool | None = None,
 ) -> list[DetectedEntity]:
     """
     Detect all PII in the given text.
@@ -658,12 +690,18 @@ def detect(
         use_presidio: If True, runs both regex and Presidio layers.
                       If False, runs regex only (faster, less accurate).
         use_llm: If True, validates medium-confidence entities via Ollama LLM.
+                 If None, uses the USE_LLM_VALIDATION config setting (default: False).
 
     Returns:
         List of DetectedEntity objects sorted by position.
     """
     if not text or not text.strip():
         return []
+
+    # Respect config flag if not explicitly set
+    if use_llm is None:
+        from tools.config import USE_LLM_VALIDATION
+        use_llm = USE_LLM_VALIDATION
 
     regex_results = _detect_regex(text)
 

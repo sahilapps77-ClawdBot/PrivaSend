@@ -1,7 +1,25 @@
 # PrivaSend — State
 
-> **Current phase:** Phase 1A–1D COMPLETE. Architecture pivot discussed, awaiting team sign-off.
-> **Last session:** 2026-01-30
+> **Current phase:** MVP Architecture Pivot — Security hardened, ready for implementation
+> **Last session:** 2026-02-04
+
+## Next Steps
+
+**Implementation plan saved to:** `.planning/MVP_ARCHITECTURE_PIVOT.md`
+
+When you return, run:
+```
+Execute the plan in .planning/MVP_ARCHITECTURE_PIVOT.md
+```
+
+The plan covers 5 phases:
+1. Backend config (confidence thresholds, LLM disable flag, OpenRouter config)
+2. OpenRouter integration (new `tools/openrouter.py`)
+3. New API endpoints (analyze-for-review, redact-selected, send-to-ai)
+4. Frontend redesign (review panel, category toggles, AI modal)
+5. Deployment
+
+---
 
 ## Deployment Info
 
@@ -51,6 +69,92 @@ ssh root@72.61.171.205 "docker exec nginx-proxy-manager cat /data/nginx/proxy_ho
 ---
 
 ## Session Log
+
+### 2026-02-04 (Session 6) — Security Hardening
+
+**What happened:**
+- Reviewed security audit report (`security_audit_report.md`) and verified findings against actual code
+- Fixed 4 Critical/High security issues:
+  1. **CORS Restriction** — Changed from `allow_origins=["*"]` to explicit whitelist:
+     - `https://test.smcloud.cloud` (production)
+     - `http://localhost:8000`, `http://localhost:8100` (dev)
+     - `http://127.0.0.1:8000`, `http://127.0.0.1:8100` (dev)
+  2. **Rate Limiting** — Added slowapi to `/api/send-to-ai` endpoint (10 requests/minute per IP)
+  3. **API Key Validation** — Added format check in `tools/openrouter.py` (must start with `sk-or-v1-`)
+  4. **Pre-commit Hooks** — Set up detect-secrets to prevent future secret commits
+
+**Audit corrections (report inaccuracies):**
+- Issue 1 (API key in .env): Report claimed not gitignored — FALSE, `.env` IS gitignored
+- Issue 3 (XSS): Report claimed direct innerHTML injection — FALSE, code uses `escapeHtml()` properly
+- Issue 6 (HTTPS): Already handled by Nginx Proxy Manager
+
+**Files created:**
+- `.pre-commit-config.yaml` — detect-secrets + basic file checks
+- `.secrets.baseline` — detect-secrets baseline
+
+**Files modified:**
+- `server/main.py` — CORS whitelist, rate limiting middleware
+- `tools/openrouter.py` — API key format validation
+- `pyproject.toml` — Added slowapi dependency
+- `.gitignore` — Added `security_audit_report.md`
+
+**Pre-commit hooks installed:**
+- `detect-secrets` — Scans for API keys/secrets
+- `check-added-large-files` — Max 1000KB
+- `check-case-conflict`, `check-merge-conflict`, `check-yaml`
+- `end-of-file-fixer`, `trailing-whitespace`
+- `no-commit-to-branch` — Prevents direct commits to main
+
+**Tests:** 187 passed, 1 pre-existing failure (ADV-24)
+
+**Action required before deploying:**
+- Consider rotating OpenRouter API key (it appeared in the audit report)
+
+---
+
+### 2026-02-03 (Session 5) — Applied Agentic Bible Framework
+
+**What happened:**
+- Reviewed AGENTIC_BIBLE.md and mapped it to PrivaSend project
+- Created workflow documentation in `workflows/`:
+  - `detect_pii.md` — How to run PII detection
+  - `redact_text.md` — Redaction process and de-redaction
+  - `add_pii_type.md` — Steps to add new regex/NER patterns
+  - `evaluate_accuracy.md` — How to measure detection accuracy
+- Created `.planning/` directory with:
+  - `REQUIREMENTS.md` (copied from root)
+  - `ROADMAP.md` (copied from root)
+  - `CONTEXT_MANAGEMENT.md` — Guide for AI context management in long sessions
+- Updated `CLAUDE.md` with Bible discipline rules:
+  - Three Laws (AI reasons/code executes, evidence before assertions, simplicity)
+  - Verification Protocol (exists/substantive/wired checks)
+  - Commit Standards (conventional commits)
+  - Context Management rules
+  - AI Discipline Checklist
+- Added global user memory (`~/.claude/CLAUDE.md`) for context management:
+  - Proactive subagent suggestions for exploration
+  - Context degradation warnings
+  - /clear suggestions between tasks
+  - STATE.md documentation reminders
+
+**Files created:**
+- `workflows/detect_pii.md`
+- `workflows/redact_text.md`
+- `workflows/add_pii_type.md`
+- `workflows/evaluate_accuracy.md`
+- `.planning/REQUIREMENTS.md`
+- `.planning/ROADMAP.md`
+- `.planning/CONTEXT_MANAGEMENT.md`
+
+**Files modified:**
+- `CLAUDE.md` — Added Agentic Bible discipline layer
+
+**Next when resuming:**
+- If team approves architecture → implement confidence bucketing and review UI
+- Continue using Bible workflow: DISCOVER → PLAN → EXECUTE → VERIFY → SHIP
+- Use subagents for exploration tasks to keep main context clean
+
+---
 
 ### 2026-01-30 (Session 4) — Architecture Pivot Discussion (no code changes)
 

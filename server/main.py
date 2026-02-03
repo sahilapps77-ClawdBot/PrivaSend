@@ -11,9 +11,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
-from tools.detect_pii import detect, DetectedEntity, PIIType
+from tools.detect_pii import detect, bucket_entities, DetectedEntity, PIIType
 from tools.redact import redact, deredact, RedactionResult
+from tools.pii_categories import get_category, get_category_order
+from tools.openrouter import send_prompt, get_available_models, OpenRouterError
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -38,12 +43,27 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# CORS: Restrict to known origins
+ALLOWED_ORIGINS = [
+    "https://test.smcloud.cloud",
+    "http://localhost:8000",
+    "http://localhost:8100",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8100",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+    allow_credentials=False,
 )
+
+# Rate limiting: protect expensive AI endpoints from abuse
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ---------------------------------------------------------------------------
 # Request / Response models
@@ -88,6 +108,48 @@ class DeredactInput(BaseModel):
 
 class DeredactResponse(BaseModel):
     original_text: str
+
+
+# ---------------------------------------------------------------------------
+# New models for review flow
+# ---------------------------------------------------------------------------
+
+
+class ReviewResponse(BaseModel):
+    """Response with entities grouped by category for user review."""
+    entities: list[EntityOut]
+    categories: dict[str, list[int]]  # category name -> list of entity indices
+    category_order: list[str]  # display order for categories
+    high_confidence_indices: list[int]  # indices of entities >= 0.85 confidence
+    elapsed_ms: float
+
+
+class RedactSelectedInput(BaseModel):
+    """Request to redact only selected entities."""
+    text: str = Field(..., min_length=1, max_length=MAX_TEXT_LENGTH)
+    selected_indices: list[int]
+
+
+class SendToAIInput(BaseModel):
+    """Request to redact and send to AI."""
+    text: str = Field(..., min_length=1, max_length=MAX_TEXT_LENGTH)
+    selected_indices: list[int]
+    model: str = "openai/gpt-4o-mini"
+    prompt: str = Field(..., min_length=1)
+    api_key: str | None = None
+
+
+class AIResponse(BaseModel):
+    """Response from AI with redacted input."""
+    redacted_input: str
+    ai_response: str
+    model_used: str
+    elapsed_ms: float
+
+
+class ModelsResponse(BaseModel):
+    """Available AI models."""
+    models: dict[str, str]  # model_id -> display_name
 
 
 # ---------------------------------------------------------------------------
@@ -177,6 +239,171 @@ async def health():
     except Exception:
         pass
     return {"status": "ok", "ollama_url": OLLAMA_URL, "ollama_reachable": ollama_ok}
+
+
+# ---------------------------------------------------------------------------
+# New endpoints for review flow
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/analyze-for-review", response_model=ReviewResponse)
+async def api_analyze_for_review(body: TextInput):
+    """
+    Detect PII and return entities grouped by category for user review.
+
+    High-confidence entities (>= 0.85) are marked for pre-selection in the UI.
+    LLM validation is disabled for this endpoint.
+    """
+    log.info("POST /api/analyze-for-review  len=%d", len(body.text))
+    t0 = time.perf_counter()
+
+    # Detect without LLM validation
+    entities = detect(body.text, use_presidio=True, use_llm=False)
+
+    # Group entity indices by category
+    categories: dict[str, list[int]] = {}
+    high_confidence_indices: list[int] = []
+
+    for i, e in enumerate(entities):
+        cat = get_category(e.pii_type)
+        categories.setdefault(cat, []).append(i)
+
+        # Track high-confidence entities for pre-selection
+        if e.confidence >= 0.85:
+            high_confidence_indices.append(i)
+
+    elapsed = (time.perf_counter() - t0) * 1000
+    log.info("  analyzed %d entities in %.0f ms", len(entities), elapsed)
+
+    return ReviewResponse(
+        entities=[
+            EntityOut(
+                start=e.start,
+                end=e.end,
+                pii_type=e.pii_type.value,
+                value=e.value,
+                confidence=e.confidence,
+                source=e.source.value,
+                pre_llm_confidence=e.pre_llm_confidence,
+                llm_validated=e.llm_validated,
+            )
+            for e in entities
+        ],
+        categories=categories,
+        category_order=get_category_order(),
+        high_confidence_indices=high_confidence_indices,
+        elapsed_ms=round(elapsed, 1),
+    )
+
+
+@app.post("/api/redact-selected", response_model=RedactResponse)
+async def api_redact_selected(body: RedactSelectedInput):
+    """
+    Redact only the entities selected by the user.
+
+    This endpoint re-detects entities to ensure consistency,
+    then filters to only the selected indices.
+    """
+    log.info("POST /api/redact-selected  len=%d, selected=%d", len(body.text), len(body.selected_indices))
+    t0 = time.perf_counter()
+
+    # Re-detect to get entities (ensures consistency)
+    entities = detect(body.text, use_presidio=True, use_llm=False)
+
+    # Filter to only selected entities
+    selected_indices = set(body.selected_indices)
+    selected_entities = [
+        entities[i] for i in range(len(entities))
+        if i in selected_indices
+    ]
+
+    # Redact only selected
+    result = redact(body.text, selected_entities)
+
+    elapsed = (time.perf_counter() - t0) * 1000
+    log.info("  redacted %d of %d entities in %.0f ms", len(selected_entities), len(entities), elapsed)
+
+    return RedactResponse(
+        redacted_text=result.redacted_text,
+        mapping=result.mapping,
+        entities=[
+            EntityOut(
+                start=e.start,
+                end=e.end,
+                pii_type=e.pii_type.value,
+                value=e.value,
+                confidence=e.confidence,
+                source=e.source.value,
+                pre_llm_confidence=e.pre_llm_confidence,
+                llm_validated=e.llm_validated,
+            )
+            for e in selected_entities
+        ],
+        entity_count=result.entity_count,
+        elapsed_ms=round(elapsed, 1),
+    )
+
+
+@app.post("/api/send-to-ai", response_model=AIResponse)
+@limiter.limit("10/minute")
+async def api_send_to_ai(request: Request, body: SendToAIInput):
+    """
+    Redact selected entities and send to AI via OpenRouter.
+
+    1. Re-detect and filter to selected entities
+    2. Redact the text
+    3. Send redacted text + user prompt to AI
+    4. Return AI response
+    """
+    log.info("POST /api/send-to-ai  len=%d, model=%s", len(body.text), body.model)
+    t0 = time.perf_counter()
+
+    # Re-detect and filter to selected
+    entities = detect(body.text, use_presidio=True, use_llm=False)
+    selected_indices = set(body.selected_indices)
+    selected_entities = [
+        entities[i] for i in range(len(entities))
+        if i in selected_indices
+    ]
+
+    # Redact
+    result = redact(body.text, selected_entities)
+
+    # Build full prompt with redacted text
+    full_prompt = f"{body.prompt}\n\n---\n\n{result.redacted_text}"
+
+    # Send to AI
+    try:
+        ai_response = await send_prompt(
+            prompt=full_prompt,
+            model=body.model,
+            api_key=body.api_key,
+        )
+    except OpenRouterError as e:
+        log.error("OpenRouter error: %s", str(e))
+        raise HTTPException(
+            status_code=e.status_code or 500,
+            detail=str(e),
+        )
+    except ValueError as e:
+        log.error("Configuration error: %s", str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
+    elapsed = (time.perf_counter() - t0) * 1000
+    log.info("  AI response received in %.0f ms", elapsed)
+
+    return AIResponse(
+        redacted_input=result.redacted_text,
+        ai_response=ai_response,
+        model_used=body.model,
+        elapsed_ms=round(elapsed, 1),
+    )
+
+
+@app.get("/api/models", response_model=ModelsResponse)
+async def api_get_models():
+    """Get available AI models for the Send to AI feature."""
+    return ModelsResponse(models=get_available_models())
 
 
 # ---------------------------------------------------------------------------
