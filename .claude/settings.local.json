@@ -11,7 +11,27 @@
       "Bash(cmd /c \"move \"\"d:\\\\PrivaSend\\\\n8n_regex_architecture_evaluation.md\"\" \"\"d:\\\\PrivaSend\\\\docs\\\\reference\\\\n8n_regex_architecture_evaluation.md\"\"\")",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial project setup: documentation and structure\n\n- REQUIREMENTS.md, ROADMAP.md, STATE.md for project tracking\n- docs/architecture.md for system design\n- docs/AI_SESSION_BRIEFING.md for cross-AI context transfer\n- Moved reference docs to docs/reference/\n- pyproject.toml with pinned dependencies\n- .gitignore, .env.example\n- Empty directories: tools/, workflows/, server/, tests/\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial project setup: documentation and structure\n\n- REQUIREMENTS.md, ROADMAP.md, STATE.md for project tracking\n- docs/architecture.md for system design\n- docs/AI_SESSION_BRIEFING.md for cross-AI context transfer\n- Moved reference docs to docs/reference/\n- pyproject.toml with pinned dependencies\n- .gitignore, .env.example\n- Empty directories: tools/, workflows/, server/, tests/\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git checkout:*)",
+      "Bash(python:*)",
+      "Bash(venvScriptsactivate.bat)",
+      "Bash(pip install:*)",
+      "Bash(cmd /c \"venv\\\\Scripts\\\\activate.bat && pip install presidio-analyzer presidio-anonymizer spacy pdfplumber python-docx pytesseract Pillow openai httpx fastapi uvicorn[standard] python-multipart pydantic pydantic-settings pytest pytest-asyncio ruff 2>&1\")",
+      "Bash(cmd /c \"cd /d d:\\\\PrivaSend && venv\\\\Scripts\\\\pip install presidio-analyzer presidio-anonymizer spacy pdfplumber python-docx pytesseract Pillow openai httpx fastapi uvicorn python-multipart pydantic pydantic-settings pytest pytest-asyncio ruff\")",
+      "Bash(d:\\\\PrivaSend\\\\venv\\\\Scripts\\\\pip.exe install:*)",
+      "Bash(cmd /c \"d:\\\\PrivaSend\\\\venv\\\\Scripts\\\\pip.exe install presidio-analyzer presidio-anonymizer spacy pdfplumber python-docx pytesseract Pillow openai httpx fastapi uvicorn python-multipart pydantic pydantic-settings pytest pytest-asyncio ruff\")",
+      "Bash(powershell -Command:*)",
+      "Bash(git commit:*)",
+      "Bash(ssh -o StrictHostKeyChecking=no root@72.61.171.205 \"ss -tlnp | head -30\")",
+      "Bash(ssh -o StrictHostKeyChecking=no root@72.61.171.205 \"docker ps --format ''table {{.Names}}\\\\t{{.Ports}}\\\\t{{.Image}}''\")",
+      "Bash(scp:*)",
+      "Bash(ssh -o StrictHostKeyChecking=no root@72.61.171.205 \"ls -la /opt/privasend/ && ls -la /opt/privasend/tools/ && ls -la /opt/privasend/server/static/\")",
+      "Bash(ssh -o StrictHostKeyChecking=no root@72.61.171.205 \"cd /opt/privasend && docker build -t privasend . 2>&1 | tail -40\")",
+      "Bash(ssh:*)",
+      "Bash(curl:*)",
+      "Bash(dir /b \"d:\\\\PrivaSend\")",
+      "Bash(set OLLAMA_URL=http://72.61.171.205:11434)",
+      "Bash(docker build:*)"
     ]
   }
 }

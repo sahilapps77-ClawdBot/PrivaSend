@@ -51,6 +51,7 @@ class PIIType(str, Enum):
     LOCATION = "LOCATION"
     MEDICAL_CONDITION = "MEDICAL_CONDITION"
     DATE_TIME = "DATE_TIME"
+    CREDENTIAL = "CREDENTIAL"
 
 
 class DetectionSource(str, Enum):
@@ -58,7 +59,7 @@ class DetectionSource(str, Enum):
     PRESIDIO = "presidio"
 
 
-@dataclass(frozen=True, order=True)
+@dataclass(order=True)
 class DetectedEntity:
     """A single PII detection result."""
     start: int
@@ -67,6 +68,8 @@ class DetectedEntity:
     value: str = field(compare=False)
     confidence: float = field(compare=False)
     source: DetectionSource = field(compare=False)
+    pre_llm_confidence: float | None = field(default=None, compare=False)
+    llm_validated: bool = field(default=False, compare=False)
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +99,10 @@ _add(PIIType.PHONE, r"\b[6-9]\d{4}[\s\-]?\d{5}\b", 0.75)
 
 # --- SSN (US) ---
 _add(PIIType.SSN, r"\b\d{3}-\d{2}-\d{4}\b", 0.90)
+# SSN with zero-width characters between digits/dashes
+_add(PIIType.SSN, r"\b\d{3}[\u200b\u200c\u200d\ufeff]+-[\u200b\u200c\u200d\ufeff]*\d{2}[\u200b\u200c\u200d\ufeff]*-[\u200b\u200c\u200d\ufeff]*\d{4}\b", 0.90)
+# SSN with spaces around dashes: 123 - 45 - 6789
+_add(PIIType.SSN, r"\b\d{3}\s+-\s+\d{2}\s+-\s+\d{4}\b", 0.85)
 _add(PIIType.SSN, r"\b\d{9}\b", 0.40)  # low confidence — could be any 9-digit number
 
 # --- Credit card ---
@@ -110,12 +117,20 @@ _add(PIIType.CREDIT_CARD, r"\b6(?:011|5\d{2})[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4
 # Generic 16-digit with separators (lower confidence)
 _add(PIIType.CREDIT_CARD, r"\b\d{4}[\s\-]\d{4}[\s\-]\d{4}[\s\-]\d{4}\b", 0.70)
 
-# --- API keys ---
+# --- API keys / secrets ---
 # OpenAI
 _add(PIIType.API_KEY, r"\bsk-[A-Za-z0-9]{20,}\b", 0.95)
+# Stripe keys (sk_live_, sk_test_, rk_live_, rk_test_)
+_add(PIIType.API_KEY, r"\b[sr]k_(?:live|test)_[A-Za-z0-9]{10,}\b", 0.95)
 # AWS access key
 _add(PIIType.API_KEY, r"\bAKIA[0-9A-Z]{16}\b", 0.95)
-# Generic long hex/base64 tokens (40+ chars)
+# GitHub tokens
+_add(PIIType.API_KEY, r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,}\b", 0.95)
+# Generic key=value secrets (API_KEY=..., secret=..., token=..., password=...)
+_add(PIIType.API_KEY, r"(?:api[_\-]?key|secret|token|password|passwd|credential)\s*[=:]\s*[A-Za-z0-9\-_\.]{8,}", 0.85, re.IGNORECASE)
+# Bearer tokens (with optional "token:" prefix)
+_add(PIIType.API_KEY, r"\bBearer\s+(?:token:\s*)?[A-Za-z0-9\-_\.]{20,}\b", 0.90)
+# Generic long hex/base64 tokens (40+ chars) with keyword prefix
 _add(PIIType.API_KEY, r"\b(?:api[_\-]?key|token|secret)[\"'\s:=]+[A-Za-z0-9\-_]{32,}\b", 0.80, re.IGNORECASE)
 
 # --- Aadhaar (India) ---
@@ -218,7 +233,7 @@ _add(PIIType.UPI_ID, r"\b[a-zA-Z0-9.\-_]{3,}@(?:oksbi|okaxis|okicici|okhdfcbank|
 # Catches "username: admin password: secret123" and "user/pass = admin/secret"
 _add(PIIType.USERNAME_PASSWORD, r"(?:user(?:name)?|login)\s*[:=]\s*\S+\s+(?:pass(?:word)?|pwd)\s*[:=]\s*\S+", 0.90, re.IGNORECASE)
 # Also: "admin:password123" format (not URL, standalone)
-_add(PIIType.USERNAME_PASSWORD, r"\b(?:password|passwd|pwd)\s*[:=]\s*\S{6,}\b", 0.80, re.IGNORECASE)
+_add(PIIType.USERNAME_PASSWORD, r"(?:password|passwd|pwd)\s*[:=]\s*\S{6,}", 0.80, re.IGNORECASE)
 
 # --- Cryptocurrency wallet addresses ---
 # Bitcoin (starts with 1, 3, or bc1, 26-62 chars)
@@ -261,9 +276,9 @@ _DOB_CONTEXT_KEYWORDS = re.compile(
 
 
 def _has_dob_context(text: str, start: int, end: int) -> bool:
-    """Check if a date match has DOB context within 80 chars."""
-    window_start = max(0, start - 80)
-    window_end = min(len(text), end + 80)
+    """Check if a date match has DOB context within 40 chars."""
+    window_start = max(0, start - 40)
+    window_end = min(len(text), end + 40)
     window = text[window_start:window_end]
     return bool(_DOB_CONTEXT_KEYWORDS.search(window))
 
@@ -287,6 +302,91 @@ def _detect_regex(text: str) -> list[DetectedEntity]:
                     source=DetectionSource.REGEX,
                 )
             )
+
+    # Extract emails embedded in URLs (e.g., ?email=user@example.com)
+    for match in re.finditer(r"[?&]email=([^&\s]+@[^&\s]+)", text):
+        results.append(
+            DetectedEntity(
+                start=match.start(1),
+                end=match.end(1),
+                pii_type=PIIType.EMAIL,
+                value=match.group(1),
+                confidence=0.95,
+                source=DetectionSource.REGEX,
+            )
+        )
+
+    # Context-aware: detect PII values inside JSON-like structures
+    # Matches "key": "value" where key hints at PII type
+    _JSON_PII_KEYS = {
+        "ssn": PIIType.SSN, "social_security": PIIType.SSN,
+        "user": PIIType.CREDENTIAL, "username": PIIType.CREDENTIAL,
+        "login": PIIType.CREDENTIAL, "account": PIIType.CREDENTIAL,
+        "token": PIIType.CREDENTIAL, "tokens": PIIType.CREDENTIAL,
+        "secret": PIIType.CREDENTIAL, "password": PIIType.CREDENTIAL,
+        "api_key": PIIType.API_KEY, "apikey": PIIType.API_KEY,
+        "email": PIIType.EMAIL, "mail": PIIType.EMAIL,
+        "phone": PIIType.PHONE, "mobile": PIIType.PHONE,
+        "name": PIIType.PERSON, "full_name": PIIType.PERSON,
+        "card": PIIType.CREDIT_CARD, "cards": PIIType.CREDIT_CARD,
+        "cc": PIIType.CREDIT_CARD, "credit_card": PIIType.CREDIT_CARD,
+        "address": PIIType.ADDRESS, "addr": PIIType.ADDRESS,
+        "aadhaar": PIIType.AADHAAR, "pan": PIIType.PAN,
+    }
+    for match in re.finditer(
+        r'"(' + "|".join(re.escape(k) for k in _JSON_PII_KEYS) + r')"\s*:\s*'
+        r'(?:"([^"]{2,})"|\[([^\]]+)\])',
+        text, re.IGNORECASE,
+    ):
+        key = match.group(1).lower()
+        pii_type = _JSON_PII_KEYS.get(key)
+        if not pii_type:
+            continue
+        if match.group(2):
+            # Simple string value: "key": "value"
+            val = match.group(2)
+            val_start = match.start(2)
+            val_end = match.end(2)
+            # Skip if already detected at this span
+            already = any(r.start == val_start and r.end == val_end for r in results)
+            if not already:
+                results.append(DetectedEntity(
+                    start=val_start, end=val_end,
+                    pii_type=pii_type, value=val,
+                    confidence=0.85, source=DetectionSource.REGEX,
+                ))
+        elif match.group(3):
+            # Array: "key": ["val1", "val2"]
+            array_text = match.group(3)
+            array_offset = match.start(3)
+            for arr_match in re.finditer(r'"([^"]{2,})"', array_text):
+                val = arr_match.group(1)
+                val_start = array_offset + arr_match.start(1)
+                val_end = array_offset + arr_match.end(1)
+                already = any(r.start == val_start and r.end == val_end for r in results)
+                if not already:
+                    results.append(DetectedEntity(
+                        start=val_start, end=val_end,
+                        pii_type=pii_type, value=val,
+                        confidence=0.80, source=DetectionSource.REGEX,
+                    ))
+
+    # Context-aware: detect token=VALUE, secret=VALUE in plain text
+    for match in re.finditer(
+        r"\b(token|secret|credential|auth)\s*=\s*([A-Za-z0-9\-_\.]{3,})",
+        text, re.IGNORECASE,
+    ):
+        val = match.group(2)
+        val_start = match.start(2)
+        val_end = match.end(2)
+        already = any(r.start == val_start and r.end == val_end for r in results)
+        if not already:
+            results.append(DetectedEntity(
+                start=val_start, end=val_end,
+                pii_type=PIIType.CREDENTIAL, value=val,
+                confidence=0.85, source=DetectionSource.REGEX,
+            ))
+
     return results
 
 
@@ -322,6 +422,7 @@ _PRESIDIO_TYPE_MAP: dict[str, PIIType] = {
     "AU_MEDICARE": PIIType.MEDICAL_RECORD,
     "IN_AADHAAR": PIIType.AADHAAR,
     "IN_PAN": PIIType.PAN,
+    "IN_ADDRESS": PIIType.ADDRESS,
 }
 
 
@@ -338,7 +439,97 @@ def _get_analyzer():
         })
         nlp_engine = provider.create_engine()
         _analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
+
+        # Register custom Indian address recognizer
+        from tools.indian_address_recognizer import create_indian_recognizers
+        for recognizer in create_indian_recognizers():
+            _analyzer.registry.add_recognizer(recognizer)
+
     return _analyzer
+
+
+# ---------------------------------------------------------------------------
+# NER quality filters
+# ---------------------------------------------------------------------------
+
+# Technical keywords that spaCy NER wrongly classifies as ORG/PERSON/LOCATION
+_NER_BLACKLIST = {
+    # Protocols & standards
+    "ip", "tcp", "udp", "dns", "ftp", "smtp", "imap", "pop3", "http",
+    "https", "ssh", "ssl", "tls", "cors", "rest", "graphql", "oauth",
+    "saml", "ldap", "snmp", "mqtt", "grpc", "websocket",
+    # Data formats
+    "json", "xml", "html", "css", "csv", "pdf", "yaml", "toml", "svg",
+    "png", "jpg", "gif", "mp4", "wav",
+    # Tech terms commonly misidentified
+    "api", "api_key", "api key", "url", "uri", "sql", "jwt", "uuid",
+    "guid", "regex", "cron", "ascii", "utf", "utf-8", "utf8", "iso",
+    "ssn", "vin", "iban", "bic", "ein", "pan", "upi", "otp", "pin",
+    "mac", "nfc", "rfid", "gps",
+    # Platforms & tools
+    "unix", "linux", "macos", "windows", "docker", "nginx", "redis",
+    "kafka", "kubernetes", "git", "npm", "pip", "aws", "gcp", "azure",
+    # Timezones & units
+    "utc", "gmt", "est", "pst", "cst", "mst", "ist", "bst", "cet",
+    "aest", "jst", "kst",
+    # OS / architecture fragments from user-agent strings
+    "win64", "win32", "x64", "x86", "x86_64", "arm64", "amd64",
+    "intel", "mozilla",
+    # Common NER false positives
+    "social security", "api_key", "the", "end",
+    # Directional / address fragments
+    "nw", "ne", "sw", "se", "n", "s", "e", "w",
+}
+
+# Multi-word phrases that should never be ORGANIZATION
+_ORG_PHRASE_BLACKLIST = {
+    "social security", "third-party monitoring systems",
+    "third party monitoring systems", "error messages",
+    "stack traces", "crash reports", "error logs",
+}
+
+
+def _looks_like_person(value: str) -> bool:
+    """Check if a PERSON entity actually looks like a human name."""
+    v = value.strip()
+    if not v or not any(c.isalpha() for c in v):
+        return False
+    # Single short ALL-CAPS word = likely acronym, not a name
+    if len(v) < 6 and v.isupper() and " " not in v:
+        return False
+    # Contains = or : → likely key=value, not a name
+    if "=" in v or ":" in v:
+        return False
+    # Single lowercase word → names are capitalized
+    words = v.split()
+    if len(words) == 1 and v[0].islower():
+        return False
+    # Purely numeric or hex-like → not a name
+    if all(c in "0123456789abcdefABCDEF-_ " for c in v):
+        return False
+    # Contains digits mixed in → likely a token/identifier, not a name
+    if any(c.isdigit() for c in v):
+        return False
+    return True
+
+
+def _looks_like_organization(value: str) -> bool:
+    """Check if an ORGANIZATION entity is plausible (not a tech term or noise)."""
+    v = value.strip()
+    low = v.lower()
+    # Check phrase blacklist
+    if low in _ORG_PHRASE_BLACKLIST:
+        return False
+    # Single word that's ALL-CAPS and short → likely acronym/keyword
+    if " " not in v and len(v) <= 5 and v.isupper():
+        return False
+    # Contains only hex/base64 chars and is long → likely encoded data, not org
+    if len(v) > 15 and all(c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=" for c in v):
+        return False
+    # Contains digits mixed with letters in non-org patterns
+    if any(c.isdigit() for c in v) and not any(w in low for w in ("inc", "ltd", "corp", "llc", "co", "group", "bank", "systems")):
+        return False
+    return True
 
 
 def _detect_presidio(text: str) -> list[DetectedEntity]:
@@ -350,16 +541,40 @@ def _detect_presidio(text: str) -> list[DetectedEntity]:
         pii_type = _PRESIDIO_TYPE_MAP.get(result.entity_type)
         if pii_type is None:
             continue
-        # Filter out low-confidence Presidio guesses (reduces false positives
-        # from ORGANIZATION, LOCATION being applied to common words)
+        # Filter out low-confidence Presidio guesses
         if result.score < 0.6:
+            continue
+        value = text[result.start:result.end]
+        # Blacklist technical keywords misidentified by NER
+        if value.lower().strip() in _NER_BLACKLIST:
+            continue
+        # Trim PERSON entities that grabbed non-name trailing text
+        # e.g., "Michael R. Thompson - Case" → "Michael R. Thompson"
+        if pii_type == PIIType.PERSON:
+            sep = re.search(r"\s[-–—]\s", value)
+            if sep:
+                value = value[:sep.start()]
+                result_end = result.start + len(value)
+            else:
+                result_end = result.end
+        else:
+            result_end = result.end
+        # Validate PERSON entities look like real human names
+        if pii_type == PIIType.PERSON and not _looks_like_person(value):
+            continue
+        # Validate ORGANIZATION entities are plausible
+        if pii_type == PIIType.ORGANIZATION and not _looks_like_organization(value):
+            continue
+        # Reject EMAIL entities that are actually URLs (Presidio grabs full
+        # URL containing email query params as a single EMAIL entity)
+        if pii_type == PIIType.EMAIL and ("/" in value or "?" in value):
             continue
         entities.append(
             DetectedEntity(
                 start=result.start,
-                end=result.end,
+                end=result_end,
                 pii_type=pii_type,
-                value=text[result.start:result.end],
+                value=value,
                 confidence=round(result.score, 2),
                 source=DetectionSource.PRESIDIO,
             )
@@ -376,6 +591,15 @@ def _spans_overlap(a: DetectedEntity, b: DetectedEntity) -> bool:
     return a.start < b.end and b.start < a.end
 
 
+# Generic NER types that should be suppressed when a specific regex type exists
+_GENERIC_NER_TYPES = {PIIType.ORGANIZATION, PIIType.PERSON, PIIType.LOCATION}
+_SPECIFIC_REGEX_TYPES = {
+    PIIType.SSN, PIIType.CREDIT_CARD, PIIType.IP_ADDRESS, PIIType.API_KEY,
+    PIIType.AADHAAR, PIIType.PAN, PIIType.PHONE, PIIType.EMAIL,
+    PIIType.ADDRESS, PIIType.USERNAME_PASSWORD, PIIType.CREDENTIAL,
+}
+
+
 def _merge_results(
     regex_results: list[DetectedEntity],
     presidio_results: list[DetectedEntity],
@@ -384,26 +608,35 @@ def _merge_results(
     Merge results from both layers. When spans overlap:
     - If same PII type: keep the one with higher confidence.
     - If different PII types: keep both (different findings for same span).
+    - Suppress generic NER types (ORG/PERSON/LOCATION) when a specific regex
+      type (SSN/CREDIT_CARD/IP/API_KEY/etc.) exists on the same span.
     """
-    # Start with all regex results
     merged: list[DetectedEntity] = list(regex_results)
 
     for p_entity in presidio_results:
+        # If this is a generic NER type, check if a specific regex already covers this span
+        if p_entity.pii_type in _GENERIC_NER_TYPES:
+            has_specific = any(
+                _spans_overlap(m, p_entity)
+                and m.source == DetectionSource.REGEX
+                and m.pii_type in _SPECIFIC_REGEX_TYPES
+                for m in merged
+            )
+            if has_specific:
+                continue  # suppress generic NER
+
         overlapping = [
             m for m in merged
             if _spans_overlap(m, p_entity) and m.pii_type == p_entity.pii_type
         ]
         if not overlapping:
-            # No overlap with same type — add it
             merged.append(p_entity)
         else:
-            # Overlap exists with same type — replace if Presidio has higher confidence
             for existing in overlapping:
                 if p_entity.confidence > existing.confidence:
                     merged.remove(existing)
                     merged.append(p_entity)
 
-    # Sort by position in text
     merged.sort(key=lambda e: (e.start, e.end))
     return merged
 
@@ -412,7 +645,11 @@ def _merge_results(
 # Public API
 # ---------------------------------------------------------------------------
 
-def detect(text: str, use_presidio: bool = True) -> list[DetectedEntity]:
+def detect(
+    text: str,
+    use_presidio: bool = True,
+    use_llm: bool = False,
+) -> list[DetectedEntity]:
     """
     Detect all PII in the given text.
 
@@ -420,6 +657,7 @@ def detect(text: str, use_presidio: bool = True) -> list[DetectedEntity]:
         text: The input text to scan.
         use_presidio: If True, runs both regex and Presidio layers.
                       If False, runs regex only (faster, less accurate).
+        use_llm: If True, validates medium-confidence entities via Ollama LLM.
 
     Returns:
         List of DetectedEntity objects sorted by position.
@@ -431,6 +669,14 @@ def detect(text: str, use_presidio: bool = True) -> list[DetectedEntity]:
 
     if use_presidio:
         presidio_results = _detect_presidio(text)
-        return _merge_results(regex_results, presidio_results)
+        merged = _merge_results(regex_results, presidio_results)
+    else:
+        merged = sorted(regex_results, key=lambda e: (e.start, e.end))
 
-    return sorted(regex_results, key=lambda e: (e.start, e.end))
+    if use_llm:
+        from tools.llm_validator import validate_entities
+        from tools.config import REDACTION_THRESHOLD
+        merged = validate_entities(merged, text)
+        merged = [e for e in merged if e.confidence >= REDACTION_THRESHOLD]
+
+    return merged

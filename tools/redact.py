@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from tools.audit import log_redaction
 from tools.detect_pii import DetectedEntity, PIIType
 
 
@@ -41,17 +42,32 @@ def redact(text: str, entities: list[DetectedEntity]) -> RedactionResult:
     # or if same span, the higher confidence.
     resolved = _resolve_overlaps(entities)
 
-    # Assign numbered placeholders per type
+    # Assign numbered placeholders per type, with value-aware dedup:
+    # same underlying value (normalized) gets the same placeholder number.
     type_counters: dict[PIIType, int] = {}
+    value_to_placeholder: dict[tuple[PIIType, str], str] = {}
     mapping: dict[str, str] = {}
-    placeholders: list[tuple[int, int, str]] = []  # (start, end, placeholder)
+    placeholders: list[tuple[int, int, str]] = []
 
     for entity in resolved:
-        count = type_counters.get(entity.pii_type, 0) + 1
-        type_counters[entity.pii_type] = count
-        placeholder = f"[{entity.pii_type.value}_{count}]"
-        mapping[placeholder] = entity.value
+        # Normalize: strip zero-width chars, collapse whitespace
+        normalized = entity.value.strip()
+        for zw in "\u200b\u200c\u200d\ufeff":
+            normalized = normalized.replace(zw, "")
+        normalized = " ".join(normalized.split())
+
+        dedup_key = (entity.pii_type, normalized)
+        if dedup_key in value_to_placeholder:
+            placeholder = value_to_placeholder[dedup_key]
+        else:
+            count = type_counters.get(entity.pii_type, 0) + 1
+            type_counters[entity.pii_type] = count
+            placeholder = f"[{entity.pii_type.value}_{count}]"
+            value_to_placeholder[dedup_key] = placeholder
+            mapping[placeholder] = entity.value
+
         placeholders.append((entity.start, entity.end, placeholder))
+        log_redaction(entity, redacted=True)
 
     # Replace from end to start to preserve offsets
     redacted = text

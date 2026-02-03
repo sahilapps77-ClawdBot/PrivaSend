@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh -o StrictHostKeyChecking=no root@72.61.171.205 \"mkdir -p /opt/privasend\")",
+      "Bash(ssh -o StrictHostKeyChecking=no root@72.61.171.205 \"docker rm -f privasend 2>/dev/null; docker run -d --name privasend -p 8100:8000 --restart unless-stopped privasend\")"
+    ]
+  }
+}

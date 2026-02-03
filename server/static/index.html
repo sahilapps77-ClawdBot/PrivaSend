@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrivaSend — PII Detection & Redaction</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    color: #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Animated background orbs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.3;
+    z-index: 0;
+    animation: float 12s ease-in-out infinite alternate;
+  }
+  body::before {
+    width: 500px; height: 500px;
+    background: #7c3aed;
+    top: -10%; left: -10%;
+  }
+  body::after {
+    width: 400px; height: 400px;
+    background: #06b6d4;
+    bottom: -10%; right: -10%;
+    animation-delay: -6s;
+  }
+  @keyframes float {
+    0%   { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(60px, 40px) scale(1.1); }
+  }
+
+  /* ── Glass Card ───────────────────────────────────────────── */
+  .glass {
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  /* ── Layout ───────────────────────────────────────────────── */
+  .page-layout {
+    display: flex;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 1320px;
+    z-index: 1;
+    position: relative;
+    align-items: flex-start;
+  }
+  .container {
+    flex: 1;
+    min-width: 0;
+    z-index: 1;
+    position: relative;
+  }
+  .sidebar {
+    width: 380px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 2rem;
+    z-index: 1;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2rem;
+    z-index: 1;
+    position: relative;
+  }
+
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #a78bfa, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.4rem;
+  }
+
+  header p {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.95rem;
+  }
+
+  .card {
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── Textarea ─────────────────────────────────────────────── */
+  label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.6rem;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #e0e0e0;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    padding: 1rem;
+    resize: vertical;
+    transition: border-color 0.2s;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: rgba(167, 139, 250, 0.5);
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
+  }
+  textarea::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+  }
+
+  /* ── Button ───────────────────────────────────────────────── */
+  .btn-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.2rem;
+  }
+
+  button {
+    flex: 1;
+    padding: 0.85rem 1.5rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e0e0e0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  /* ── Loading spinner ──────────────────────────────────────── */
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Results ──────────────────────────────────────────────── */
+  .results { display: none; }
+  .results.visible { display: block; }
+
+  .stats-bar {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.2rem;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #a78bfa, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-label {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Redacted text display */
+  .redacted-output {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1rem;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: 1.2rem;
+    min-height: 60px;
+  }
+
+  /* PII tag pill */
+  .pii-tag {
+    display: inline;
+    padding: 0.15em 0.5em;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+
+  /* Color palette for PII types */
+  .pii-EMAIL           { background: rgba(239, 68, 68, 0.25); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .pii-PHONE           { background: rgba(59, 130, 246, 0.25); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+  .pii-SSN             { background: rgba(245, 158, 11, 0.25); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .pii-CREDIT_CARD     { background: rgba(236, 72, 153, 0.25); color: #f9a8d4; border: 1px solid rgba(236,72,153,0.3); }
+  .pii-PERSON          { background: rgba(16, 185, 129, 0.25); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+  .pii-ADDRESS         { background: rgba(139, 92, 246, 0.25); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); }
+  .pii-ORGANIZATION    { background: rgba(14, 165, 233, 0.25); color: #7dd3fc; border: 1px solid rgba(14,165,233,0.3); }
+  .pii-LOCATION        { background: rgba(20, 184, 166, 0.25); color: #5eead4; border: 1px solid rgba(20,184,166,0.3); }
+  .pii-default         { background: rgba(148, 163, 184, 0.25); color: #cbd5e1; border: 1px solid rgba(148,163,184,0.3); }
+
+  /* Mapping table */
+  .mapping-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.85rem;
+  }
+  .mapping-table th {
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.4);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .mapping-table td {
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  }
+  .mapping-table tr:last-child td { border-bottom: none; }
+  .mapping-table .placeholder { color: #a78bfa; }
+  .mapping-table .original { color: #fca5a5; }
+
+  /* Detection details table */
+  .details-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.82rem;
+  }
+  .details-table th {
+    text-align: left;
+    padding: 0.6rem 0.6rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.4);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .details-table td {
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  }
+  .details-table tr:last-child td { border-bottom: none; }
+
+  .source-badge {
+    display: inline-block;
+    padding: 0.15em 0.5em;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .source-regex    { background: rgba(245,158,11,0.25); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .source-presidio { background: rgba(59,130,246,0.25); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+  .source-llm      { background: rgba(16,185,129,0.25); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+
+  .conf-value { color: #a78bfa; font-weight: 600; }
+  .conf-arrow { color: rgba(255,255,255,0.3); margin: 0 0.3em; }
+  .llm-label  { font-size: 0.7rem; color: rgba(255,255,255,0.3); }
+
+  /* ── Flowchart Sidebar ──────────────────────────────────────── */
+  .flowchart-card { padding: 1.5rem; }
+  .flowchart-card h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 1.2rem;
+    text-align: center;
+  }
+
+  .flow-pipeline { display: flex; flex-direction: column; align-items: center; gap: 0; }
+
+  .flow-node {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.4;
+    position: relative;
+  }
+  .flow-node .flow-sub {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: rgba(255,255,255,0.45);
+    margin-top: 0.15rem;
+  }
+
+  .flow-input {
+    background: rgba(139,92,246,0.2);
+    border: 1px solid rgba(139,92,246,0.35);
+    color: #c4b5fd;
+  }
+  .flow-regex {
+    background: rgba(245,158,11,0.2);
+    border: 1px solid rgba(245,158,11,0.35);
+    color: #fcd34d;
+  }
+  .flow-presidio {
+    background: rgba(59,130,246,0.2);
+    border: 1px solid rgba(59,130,246,0.35);
+    color: #93c5fd;
+  }
+  .flow-merge {
+    background: rgba(20,184,166,0.2);
+    border: 1px solid rgba(20,184,166,0.35);
+    color: #5eead4;
+  }
+  .flow-llm {
+    background: rgba(16,185,129,0.2);
+    border: 1px solid rgba(16,185,129,0.35);
+    color: #6ee7b7;
+  }
+  .flow-threshold {
+    background: rgba(236,72,153,0.2);
+    border: 1px solid rgba(236,72,153,0.35);
+    color: #f9a8d4;
+  }
+  .flow-output {
+    background: rgba(99,102,241,0.2);
+    border: 1px solid rgba(99,102,241,0.35);
+    color: #a5b4fc;
+  }
+
+  .flow-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.15rem 0;
+    color: rgba(255,255,255,0.2);
+    font-size: 0.85rem;
+    line-height: 1;
+  }
+  .flow-arrow::before { content: '|'; }
+  .flow-arrow::after  { content: '\25BC'; font-size: 0.7rem; margin-top: -2px; }
+
+  .flow-condition {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.35);
+    text-align: center;
+    padding: 0;
+    font-style: italic;
+  }
+
+  /* Roadmap section */
+  .flow-divider {
+    width: 100%;
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin: 1.2rem 0 1rem;
+  }
+  .roadmap-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 0.8rem;
+    text-align: center;
+  }
+  .roadmap-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .roadmap-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.5);
+    padding: 0.35rem 0;
+    line-height: 1.4;
+  }
+  .roadmap-list li .rm-icon {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    margin-top: 1px;
+  }
+  .rm-done { background: rgba(16,185,129,0.25); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+  .rm-current { background: rgba(245,158,11,0.25); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .rm-future { background: rgba(148,163,184,0.15); color: rgba(255,255,255,0.3); border: 1px solid rgba(148,163,184,0.2); }
+
+  /* ── Footer ───────────────────────────────────────────────── */
+  footer {
+    text-align: center;
+    margin-top: 1rem;
+    color: rgba(255,255,255,0.25);
+    font-size: 0.8rem;
+    z-index: 1;
+    position: relative;
+  }
+  footer a { color: rgba(167, 139, 250, 0.6); text-decoration: none; }
+  footer a:hover { color: #a78bfa; }
+
+  /* ── Error ────────────────────────────────────────────────── */
+  .error-msg {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    color: #fca5a5;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    display: none;
+  }
+  .error-msg.visible { display: block; }
+
+  /* ── Responsive ───────────────────────────────────────────── */
+  @media (max-width: 1100px) {
+    .page-layout { flex-direction: column; align-items: center; }
+    .sidebar { width: 100%; max-width: 800px; position: static; }
+  }
+  @media (max-width: 600px) {
+    /* Disable animated orbs — they cause scroll-lock on mobile */
+    body::before, body::after { display: none; }
+    body { padding: 1rem 0.5rem; }
+    h1 { font-size: 1.6rem; }
+    header p { font-size: 0.82rem; }
+    .card { padding: 1rem; border-radius: 14px; }
+    .glass { border-radius: 14px; }
+    .btn-row { flex-direction: column; }
+    .stats-bar { gap: 1rem; }
+    textarea { min-height: 120px; font-size: 0.82rem; padding: 0.8rem; border-radius: 10px; }
+    .redacted-output { font-size: 0.78rem; padding: 0.8rem; border-radius: 10px; line-height: 1.6; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .pii-tag { font-size: 0.72rem; padding: 0.1em 0.35em; }
+
+    /* Stack detection details as cards instead of a wide table */
+    .details-table thead { display: none; }
+    .details-table, .details-table tbody { display: block; width: 100%; }
+    .details-table tr {
+      display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem;
+      padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+      align-items: center;
+    }
+    .details-table tr:last-child { border-bottom: none; }
+    .details-table td { display: inline; padding: 0; border: none; font-size: 0.75rem; }
+    .details-table td:first-child { width: 100%; word-break: break-all; color: #fca5a5; margin-bottom: 0.1rem; }
+
+    /* Mapping table — stack vertically */
+    .mapping-table thead { display: none; }
+    .mapping-table, .mapping-table tbody { display: block; width: 100%; }
+    .mapping-table tr {
+      display: flex; flex-direction: column; gap: 0.15rem;
+      padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .mapping-table tr:last-child { border-bottom: none; }
+    .mapping-table td { display: block; padding: 0; border: none; font-size: 0.75rem; word-break: break-all; }
+
+    .source-badge { font-size: 0.65rem; padding: 0.1em 0.35em; }
+    .conf-value { font-size: 0.75rem; }
+
+    /* Flowchart sidebar compact */
+    .flowchart-card { padding: 1rem; }
+    .flowchart-card h2 { font-size: 0.85rem; margin-bottom: 0.8rem; }
+    .flow-node { padding: 0.5rem 0.7rem; font-size: 0.72rem; border-radius: 10px; }
+    .flow-node .flow-sub { font-size: 0.62rem; }
+    .flow-condition { font-size: 0.58rem; }
+    .roadmap-list li { font-size: 0.68rem; }
+
+    button { padding: 0.75rem 1rem; font-size: 0.9rem; }
+    label { font-size: 0.78rem; }
+
+    /* Ensure page-layout children don't overflow */
+    .container, .sidebar { max-width: 100%; overflow: hidden; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>PrivaSend</h1>
+  <p>Paste text below to detect and redact personally identifiable information</p>
+</header>
+
+<div class="page-layout">
+
+  <!-- LEFT: Main content -->
+  <div class="container">
+    <!-- Input -->
+    <div class="glass card">
+      <label for="input-text">Input Text</label>
+      <textarea id="input-text" placeholder="Paste text containing PII here...&#10;&#10;Example: My name is John Smith, email john@example.com, SSN 123-45-6789"></textarea>
+      <div class="btn-row">
+        <button class="btn-primary" id="btn-redact" onclick="handleRedact()">Redact PII</button>
+        <button class="btn-secondary" onclick="handleClear()">Clear</button>
+      </div>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="results">
+      <div class="glass card">
+        <label>Results</label>
+        <div class="stats-bar">
+          <div class="stat">
+            <span class="stat-value" id="stat-count">0</span>
+            <span class="stat-label">PII Found</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-time">0</span>
+            <span class="stat-label">ms</span>
+          </div>
+        </div>
+
+        <label>Redacted Text</label>
+        <div class="redacted-output" id="redacted-output"></div>
+
+        <div id="details-section" style="display:none;">
+          <label>Detection Details</label>
+          <table class="details-table">
+            <thead><tr><th>Entity</th><th>Type</th><th>Detected By</th><th>Confidence</th></tr></thead>
+            <tbody id="details-body"></tbody>
+          </table>
+        </div>
+
+        <div id="mapping-section" style="display:none;">
+          <label>Mapping (reversible)</label>
+          <table class="mapping-table">
+            <thead><tr><th>Placeholder</th><th>Original Value</th></tr></thead>
+            <tbody id="mapping-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Flowchart sidebar -->
+  <aside class="sidebar">
+    <div class="glass flowchart-card">
+      <h2>How It Works</h2>
+
+      <div class="flow-pipeline">
+        <div class="flow-node flow-input">
+          Input Text
+          <span class="flow-sub">Plain text (MVP)</span>
+        </div>
+
+        <div class="flow-arrow"></div>
+
+        <div class="flow-node flow-regex">
+          Layer 1: Regex Engine
+          <span class="flow-sub">51 patterns &bull; &lt;10ms &bull; Emails, phones, SSN, Aadhaar, PAN, credit cards, API keys&hellip;</span>
+        </div>
+
+        <div class="flow-arrow"></div>
+
+        <div class="flow-node flow-presidio">
+          Layer 2: Presidio + spaCy NER
+          <span class="flow-sub">ML-based &bull; ~200ms &bull; Names, addresses, orgs, locations + Indian address recognizer</span>
+        </div>
+
+        <div class="flow-arrow"></div>
+
+        <div class="flow-node flow-merge">
+          Merge &amp; Deduplicate
+          <span class="flow-sub">Combine both layers, resolve overlaps, keep highest confidence</span>
+        </div>
+
+        <div class="flow-arrow"></div>
+        <div class="flow-condition">only if 0.60 &le; confidence &le; 0.85</div>
+
+        <div class="flow-node flow-llm">
+          Layer 3: LLM Validator
+          <span class="flow-sub">Ollama llama3:8b &bull; Binary PII validation &bull; JSON only &bull; Fail-open</span>
+        </div>
+
+        <div class="flow-arrow"></div>
+        <div class="flow-condition">final = 0.6 &times; detector + 0.4 &times; LLM</div>
+
+        <div class="flow-node flow-threshold">
+          Confidence Threshold
+          <span class="flow-sub">&ge; 0.65 &rarr; redact &bull; &lt; 0.65 &rarr; skip</span>
+        </div>
+
+        <div class="flow-arrow"></div>
+
+        <div class="flow-node flow-output">
+          Output
+          <span class="flow-sub">Redacted text + reversible [TYPE_N] mapping + audit log</span>
+        </div>
+      </div>
+
+      <hr class="flow-divider">
+      <div class="roadmap-title">Roadmap</div>
+      <ul class="roadmap-list">
+        <li><span class="rm-icon rm-done">&#10003;</span> Phase 1A &mdash; Detection engine (regex + Presidio + spaCy)</li>
+        <li><span class="rm-icon rm-done">&#10003;</span> Phase 1C &mdash; FastAPI server + API endpoints</li>
+        <li><span class="rm-icon rm-done">&#10003;</span> Phase 1D &mdash; Web frontend</li>
+        <li><span class="rm-icon rm-current">&#9679;</span> LLM validation layer (Ollama llama3:8b)</li>
+        <li><span class="rm-icon rm-current">&#9679;</span> Indian address &amp; locality detection</li>
+        <li><span class="rm-icon rm-future">&#9675;</span> Phase 1B &mdash; PDF, DOCX, image/OCR input</li>
+        <li><span class="rm-icon rm-future">&#9675;</span> Video frame scanning &amp; audio transcription</li>
+        <li><span class="rm-icon rm-future">&#9675;</span> Send to AI &mdash; redact &rarr; LLM &rarr; de-redact</li>
+        <li><span class="rm-icon rm-future">&#9675;</span> n8n workflow integration</li>
+        <li><span class="rm-icon rm-future">&#9675;</span> Cloud deploy, auth &amp; multi-tenancy</li>
+      </ul>
+    </div>
+  </aside>
+
+</div>
+
+<footer>
+  PrivaSend &mdash; PII Detection &amp; Redaction Engine
+</footer>
+
+<script>
+const inputEl = document.getElementById('input-text');
+const btnEl   = document.getElementById('btn-redact');
+const resultEl = document.getElementById('results');
+const errorEl  = document.getElementById('error-msg');
+
+// PII type → CSS class mapping
+const PII_CLASSES = [
+  'EMAIL','PHONE','SSN','CREDIT_CARD','PERSON','ADDRESS',
+  'ORGANIZATION','LOCATION'
+];
+
+function piiClass(type) {
+  return PII_CLASSES.includes(type) ? `pii-${type}` : 'pii-default';
+}
+
+function showError(msg) {
+  errorEl.textContent = msg;
+  errorEl.classList.add('visible');
+}
+function hideError() {
+  errorEl.classList.remove('visible');
+}
+
+async function handleRedact() {
+  const text = inputEl.value.trim();
+  if (!text) { showError('Please enter some text.'); return; }
+  hideError();
+
+  // Loading state
+  btnEl.disabled = true;
+  btnEl.innerHTML = '<span class="spinner"></span>Analyzing...';
+
+  try {
+    const res = await fetch('/api/redact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Server error (${res.status})`);
+    }
+
+    const data = await res.json();
+    renderResults(data);
+  } catch (e) {
+    showError(e.message || 'Something went wrong.');
+    resultEl.classList.remove('visible');
+  } finally {
+    btnEl.disabled = false;
+    btnEl.textContent = 'Redact PII';
+  }
+}
+
+function renderResults(data) {
+  // Stats
+  document.getElementById('stat-count').textContent = data.entity_count;
+  document.getElementById('stat-time').textContent = Math.round(data.elapsed_ms);
+
+  // Redacted text with colored tags
+  const output = document.getElementById('redacted-output');
+  let html = escapeHtml(data.redacted_text);
+
+  // Highlight placeholders like [EMAIL_1]
+  html = html.replace(/\[([A-Z_]+)_(\d+)\]/g, (match, type) => {
+    const cls = piiClass(type);
+    return `<span class="pii-tag ${cls}">${match}</span>`;
+  });
+  output.innerHTML = html;
+
+  // Detection details table
+  const detailsBody = document.getElementById('details-body');
+  const detailsSection = document.getElementById('details-section');
+  detailsBody.innerHTML = '';
+
+  if (data.entities && data.entities.length > 0) {
+    detailsSection.style.display = 'block';
+    for (const e of data.entities) {
+      const tr = document.createElement('tr');
+      const typeTag = `<span class="pii-tag ${piiClass(e.pii_type)}">${escapeHtml(e.pii_type)}</span>`;
+
+      // Source badge
+      const srcClass = e.source === 'regex' ? 'source-regex' : 'source-presidio';
+      const srcLabel = e.source === 'regex' ? 'Regex' : 'Presidio';
+      let sourceHtml = `<span class="source-badge ${srcClass}">${srcLabel}</span>`;
+      if (e.llm_validated) {
+        sourceHtml += ` <span class="conf-arrow">\u2192</span> <span class="source-badge source-llm">LLM</span>`;
+      }
+
+      // Confidence display
+      let confHtml = '';
+      if (e.llm_validated && e.pre_llm_confidence != null) {
+        confHtml = `<span class="conf-value">${e.pre_llm_confidence.toFixed(2)}</span>`
+                 + `<span class="conf-arrow">\u2192</span>`
+                 + `<span class="conf-value">${e.confidence.toFixed(2)}</span>`
+                 + ` <span class="llm-label">LLM</span>`;
+      } else {
+        confHtml = `<span class="conf-value">${e.confidence.toFixed(2)}</span>`;
+      }
+
+      tr.innerHTML = `<td class="original">${escapeHtml(e.value)}</td><td>${typeTag}</td><td>${sourceHtml}</td><td>${confHtml}</td>`;
+      detailsBody.appendChild(tr);
+    }
+  } else {
+    detailsSection.style.display = 'none';
+  }
+
+  // Mapping table
+  const tbody = document.getElementById('mapping-body');
+  const section = document.getElementById('mapping-section');
+  tbody.innerHTML = '';
+
+  const entries = Object.entries(data.mapping);
+  if (entries.length > 0) {
+    section.style.display = 'block';
+    for (const [placeholder, original] of entries) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="placeholder">${escapeHtml(placeholder)}</td><td class="original">${escapeHtml(original)}</td>`;
+      tbody.appendChild(tr);
+    }
+  } else {
+    section.style.display = 'none';
+  }
+
+  resultEl.classList.add('visible');
+}
+
+function handleClear() {
+  inputEl.value = '';
+  resultEl.classList.remove('visible');
+  hideError();
+  inputEl.focus();
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Allow Ctrl+Enter to submit
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleRedact();
+});
+</script>
+</body>
+</html>

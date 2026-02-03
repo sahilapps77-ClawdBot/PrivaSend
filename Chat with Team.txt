@@ -1,0 +1,774 @@
+Notes
+Product Architecture and Privacy Strategy
+The team agreed to exclude a third AI processing layer to maintain data privacy and speed, focusing on a two-layer PII redaction approach that avoids sending raw user data to cloud LLMs (11:11).
+Decision to avoid the third LLM layer was based on findings that it would add 30 to 50 seconds of latency, negatively impacting user experience and increasing costs, as highlighted by Fareed Shaik and supported by HK (01:11).
+HK proposed a simpler workflow where ambiguous PII detections after two filtering layers prompt the user for confirmation before redaction, ensuring no data is sent externally and maintaining user control (19:02).
+Positioning the product as “data never leaves the system” was emphasized by HK and @Vaniaggarwal, meaning the product will prioritize privacy and only consider LLM integration if user testing shows necessity (24:11).
+User confirmation before redaction was agreed upon to improve accuracy to near 99%, combining automated detection with user validation to reduce false positives (32:52).
+Fallback to LLM integration is a contingency plan, with the team planning to run two versions (with and without LLM) during user testing to evaluate trade-offs between speed, privacy, and accuracy (26:04).
+Scope and Compliance Focus
+The team decided to target a single geographic market initially to simplify compliance and feature scope, with a preference for either India or the US and English as the primary language (38:05).
+Geographic focus was prioritized to address region-specific PII types and compliance regulations, as compliance varies widely by country and industry, with @Vaniaggarwal and Naveli Garg stressing the need to align MVP to one market (39:55).
+English language support only for MVP was chosen to reduce complexity, with multilingual and regional language support flagged as nice-to-have features for later versions (52:54).
+Compliance research tasks assigned to all members to better understand regulations like GDPR, HIPAA, and local Indian laws before finalizing the market and product positioning (45:53).
+Market-driven compliance and user needs will guide the product’s PII definitions and redaction rules, focusing initially on the most common and critical PII types relevant to the target market.
+Core Product Features and Workflow
+The team confirmed OCR capability as a must-have to support scanned PDFs, images, and other non-text digital files, enabling the tool to handle a wide variety of document formats (01:03:15).
+OCR integration is necessary because many users will upload scanned contracts, medical reports, or images, which cannot be processed without text extraction (58:05).
+Supporting multiple file types including PDFs, Excel, JPEGs, and images was emphasized to ensure broad usability, with Fareed Shaik citing AI Studio tools that facilitate easy OCR implementation (01:04:07).
+OCR will add a processing step in the workflow but is expected to be straightforward to implement technically and critical for user adoption (01:04:49).
+MVP will initially support typed text inputs, excluding voice dictation, which was considered a nice-to-have due to complexity and existing superior third-party tools like Whisper AI (48:01).
+PII Detection and Accuracy Targets
+The product aims for at least 95% PII detection accuracy through layered regex and pseudo-identification filters, supplemented by user confirmation to approach 99% accuracy (32:52).
+The initial PII list includes over 25 categories, covering identity, contact, financial, and organizational data, which is considered feasible given existing regex libraries (28:54).
+User confirmation step targets ambiguous PII cases, reducing both over-redaction and under-redaction, ensuring critical data is protected without excessive false positives (34:57).
+PII detection will be tailored by sector and use case, recognizing variability in PII types and sensitivity across industries like legal, healthcare, finance, and business (36:44).
+Testing for false positives and edge cases such as voice-to-text inaccuracies or unusual document formats was acknowledged as essential to refine detection and improve user trust (47:00).
+Data Sets and Sector Ownership for Testing
+The team assigned responsibility for collecting and curating test documents and prompts by industry sector to build a robust evaluation corpus by the end of week one (01:08:29).
+Sector assignments: HK will lead legal documents including NDAs and contracts; Naveli Garg will handle healthcare; @Vaniaggarwal will focus on business and SMB documents; Fareed Shaik will cover financial services and insurance; Mangesh will cover individual financial documents and banking; and Mohit Kumar will support tech and construction sectors (01:10:44).
+Participants will create representative prompts and documents per sector to capture PII in various real-world formats, enabling focused testing of accuracy and redaction workflows (01:10:44).
+The team plans to collect and share these data sets by Sunday night, enabling iterative testing and refinement starting early in the development phase (01:21:44).
+Prompt data will be stored sector-wise, preferably in Excel, to keep the corpus organized and scalable as new documents and test cases arise (01:21:25).
+Product Positioning and Market Strategy
+The team emphasized positioning the product clearly around data privacy, speed, and compliance, focusing marketing on key use cases in legal, healthcare, and financial sectors (24:37).
+Product messaging will stress “Your data never leaves” to build trust with users handling sensitive information, aligned with the technical architecture that avoids cloud LLM exposure (24:11).
+Marketing will highlight OCR and broad file format support as USPs, potentially giving an edge over competitors who may lack comprehensive document handling (01:03:15).
+Narrowing MVP focus by geography and sector will help concentrate resources, reduce complexity, and better address market needs (38:26).
+Future versions may add multilingual support, voice dictation, and LLM integration based on user feedback and testing outcomes (52:54).
+Action Items
+Naveli Garg
+Share and update project documents and transcript summaries on the drive (05:00)
+Lead healthcare and medical domain testing data collection (01:09:56)
+Document and write feature list including OCR and PII handling considerations (01:02:38)
+Fareed Shaik
+Evaluate feasibility and cost implications of an AI wrapper tool similar to Aliesta (07:00)
+Provide financial services and insurance sector testing data and documents (01:12:03)
+Share AI studio link and demonstrate multi-format (image, PDF, Excel) AI processing capability (01:04:07)
+Hina Khan
+Lead legal sector document and prompt preparation, including contracts and NDAs (01:08:30)
+Research regional compliance standards for India and US (01:22:40)
+Vani Aggarwal
+Lead business use case and sector-specific documents for SMBs (01:11:43)
+Conduct market-oriented compliance and geographic research on language and regulatory implications (40:40)
+Mangesh
+Provide financial and banking documents; cover tech and construction sectors as applicable (01:13:08)
+Mohit Kumar
+Support sector testing data collection as assigned; prioritize English language documents
+All Participants
+Research region-specific compliance relevant to MVP launch market (India or US) by next meeting (planned Monday) (01:22:40)
+Compile sector-specific test datasets and sample documents for PII detection and redaction testing; submit by Sunday end of week one (01:21:44)
+Confirm OCR integration feasibility and include as must-have feature in MVP (01:04:39)
+
+
+
+
+Got it. I’ve cleaned this up into a **crisp, investor / PRD-ready summary** while preserving every decision, rationale, and action item. This version is something you can confidently share with **engineering, product, compliance, or leadership** without sounding like raw meeting notes.
+
+---
+
+# Product Architecture, Privacy & MVP Strategy
+
+**Meeting Summary & Decisions**
+
+## 1. Product Architecture & Privacy Strategy
+
+* The team finalized a **two-layer PII redaction architecture**, explicitly excluding a third AI/LLM processing layer to preserve **data privacy, speed, and cost efficiency**.
+* The rejected third layer was found to introduce **30–50 seconds of additional latency**, significantly degrading user experience and increasing operational cost.
+* The core principle agreed upon: **raw user data must never be sent to external cloud LLMs**.
+* For **ambiguous PII detections**, the system will:
+
+  * Flag the data
+  * Ask the **user for confirmation before redaction**
+  * Proceed only after explicit user approval
+* This approach ensures:
+
+  * Near **99% accuracy** (automation + human validation)
+  * Zero external data exposure
+  * Full user control over sensitive information
+* Product positioning will strongly emphasize:
+
+  > **“Your data never leaves the system.”**
+* LLM-based redaction remains a **future contingency**, to be evaluated only if:
+
+  * User testing proves strong necessity
+  * Trade-offs between privacy, speed, and accuracy are acceptable
+* During user testing, **two versions** may be evaluated:
+
+  * Non-LLM (default, privacy-first)
+  * LLM-assisted (experimental)
+
+---
+
+## 2. Scope Definition & Compliance Focus
+
+* MVP will target **one geographic market only** to reduce compliance and engineering complexity.
+
+  * Final choice pending: **India or the United States**
+* **English-only support** confirmed for MVP.
+
+  * Multilingual and regional language support deferred to later phases.
+* Compliance will be **market-driven**, not generic.
+
+  * PII definitions and redaction rules will align with:
+
+    * Local regulations (GDPR, HIPAA, Indian IT laws, etc.)
+    * Sector-specific sensitivity
+* All team members assigned **compliance research** tasks to inform final market selection and positioning.
+
+---
+
+## 3. Core Product Features & Workflow
+
+### Must-Have for MVP
+
+* **OCR integration** is mandatory.
+
+  * Required to process:
+
+    * Scanned PDFs
+    * Images
+    * Non-text digital files
+* Supported file formats (initial):
+
+  * PDF
+  * Excel
+  * JPEG / PNG / images
+* OCR adds a workflow step but is:
+
+  * Technically straightforward
+  * Critical for adoption in legal, healthcare, and finance sectors
+
+### Explicitly Out of MVP Scope
+
+* Voice dictation
+
+  * Considered a nice-to-have
+  * Existing tools (e.g., Whisper) already outperform custom builds
+
+---
+
+## 4. PII Detection Strategy & Accuracy Targets
+
+* Target baseline:
+
+  * **≥95% automated detection accuracy**
+  * **~99% effective accuracy** with user confirmation
+* Detection approach:
+
+  * Layered regex filters
+  * Pseudo-identification logic
+  * Sector-specific rules
+* Initial PII coverage:
+
+  * **25+ categories**, including:
+
+    * Identity
+    * Contact
+    * Financial
+    * Organizational data
+* System will minimize:
+
+  * Over-redaction (false positives)
+  * Under-redaction (missed PII)
+* Extensive testing planned for:
+
+  * Edge cases
+  * Unusual document formats
+  * OCR-related inaccuracies
+
+---
+
+## 5. Testing Data Strategy & Sector Ownership
+
+To ensure real-world robustness, **sector-specific test datasets** will be curated.
+
+### Ownership
+
+* **Legal**: HK
+
+  * NDAs, contracts
+* **Healthcare**: Naveli Garg
+
+  * Medical reports, patient documents
+* **Business / SMBs**: Vani Aggarwal
+* **Financial Services & Insurance**: Fareed Shaik
+* **Banking & Individual Finance**: Mangesh
+* **Tech & Construction**: Mohit Kumar
+
+### Dataset Guidelines
+
+* Include:
+
+  * Representative documents
+  * Sector-specific PII patterns
+  * Sample prompts
+* Storage format:
+
+  * Sector-wise
+  * Preferably **Excel**
+* Deadline:
+
+  * **Sunday (end of Week 1)**
+
+---
+
+## 6. Product Positioning & Go-To-Market Direction
+
+* Core positioning pillars:
+
+  * **Privacy-first**
+  * **Fast**
+  * **Compliance-aligned**
+* Primary target sectors for MVP:
+
+  * Legal
+  * Healthcare
+  * Financial services
+* Key USPs:
+
+  * “Data never leaves”
+  * OCR + multi-format support
+  * No cloud LLM exposure
+* MVP scope will remain intentionally narrow to:
+
+  * Ship faster
+  * Reduce risk
+  * Validate real demand
+
+---
+
+## 7. Action Items Summary
+
+### Individual Ownership
+
+* **Naveli Garg**
+
+  * Share and maintain project docs
+  * Lead healthcare dataset
+  * Document OCR + PII feature list
+* **Fareed Shaik**
+
+  * Evaluate AI wrapper feasibility
+  * Provide finance/insurance datasets
+  * Share AI studio demo links
+* **Hina Khan**
+
+  * Legal datasets (contracts, NDAs)
+  * India & US compliance research
+* **Vani Aggarwal**
+
+  * SMB business datasets
+  * Market-driven compliance research
+* **Mangesh**
+
+  * Banking, finance, tech, construction docs
+* **Mohit Kumar**
+
+  * Support sector datasets (English only)
+
+### All Participants
+
+* Complete **region-specific compliance research** (India vs US)
+* Submit **sector datasets by Sunday**
+* Confirm OCR integration feasibility as MVP requirement
+
+---
+
+If you want, next I can:
+
+* Convert this into a **1-page PRD**
+* Draw a **clean system architecture diagram**
+* Turn this into a **pitch-ready product narrative**
+* Or generate a **developer execution checklist**
+
+Just tell me where you want to take it next.
+
+
+
+
+I was doing this , what should I do I change and how to achieve what team suggested; I am only asking about the logic
+
+
+
+TL;DR (one-line answer)
+
+Replace “Layer 3 = local LLM validator” with “Layer 3 = user confirmation gate”
+→ Everything else you built mostly stays.
+
+1. What you are currently doing (logic-wise)
+
+Your current logic pipeline is:
+
+INPUT
+  ↓
+Layer 1: Regex (deterministic PII)
+  ↓
+Layer 2: Presidio / spaCy (contextual PII)
+  ↓
+Layer 3: Local LLM decides YES / NO for uncertain cases
+  ↓
+Auto-redact everything LLM approves
+  ↓
+Send to external AI
+
+
+
+Key assumption in your design:
+
+“A machine must decide every PII case before data leaves.”
+
+This is the assumption the team wants you to change.
+
+2. What the team is actually suggesting (logic shift)
+
+The team is saying:
+
+Stop trying to auto-decide 100% of PII.
+Let the user decide the last 3–5%.
+
+So the new logic becomes:
+
+INPUT
+  ↓
+Layer 1: Regex (auto-redact, zero doubt)
+  ↓
+Layer 2: Presidio / spaCy (confidence-scored)
+  ↓
+Split detections:
+   ├─ High confidence → auto-redact
+   └─ Ambiguous → ASK USER
+  ↓
+User confirms / rejects
+  ↓
+Only then redact
+  ↓
+Send to external AI
+
+
+
+
+3. What exactly should CHANGE in your logic
+❌ REMOVE this logic
+
+From your file:
+
+“Layer 3 double-checks uncertain matches (Local LLM)”
+
+This entire idea goes away for MVP.
+
+Why the team rejected it:
+
+Adds 30–50s latency
+
+Breaks UX
+
+Adds infra + ops cost
+
+Still not perfect
+
+Not needed if user is already there
+
+✅ ADD this logic instead
+New concept: Confidence Buckets
+
+After Layer 2, every detection is classified like this:
+
+
+if confidence >= 0.90:
+    auto-redact
+elif confidence <= 0.50:
+    ignore
+else:
+    ask user
+
+
+This replaces your entire Layer 3.
+
+4. How “Ask User” works (pure logic)
+
+This is important — this is not UI fluff, it’s core logic.
+
+For each ambiguous detection, you generate:
+
+{
+  value: "Priya Sharma",
+  type: "PERSON",
+  confidence: 0.72,
+  context: "Send this to Priya Sharma by EOD"
+}
+
+
+Then the system pauses and asks:
+
+“We found ‘Priya Sharma’.
+Is this personal data that should be hidden before sending to AI?”
+
+User options:
+
+✅ Yes → redact
+
+❌ No → keep as-is
+
+That single click replaces your LLM call.
+
+5. Why this logic is strictly better (team’s reasoning)
+Speed
+
+Regex + Presidio: <1 second
+
+No LLM = no blocking calls
+
+Privacy
+
+Zero data leaves system before user approval
+
+Stronger than “local LLM” from a messaging POV
+
+Accuracy
+
+Machines handle easy 95%
+
+Humans resolve the hard 5%
+
+Net accuracy ≈ 99%+
+
+Cost
+
+No GPU
+
+No inference
+
+No scaling pain
+
+6. What logic stays exactly the same (important)
+
+You do NOT throw away:
+
+Regex layer
+
+Presidio / spaCy
+
+Confidence scores
+
+Placeholder mapping
+
+Reversible redaction
+
+“AI only sees placeholders”
+
+OCR (later)
+
+Your engine is still valid.
+Only the decision authority changes.
+
+7. How to rewrite your architecture in one sentence
+
+Old
+
+“Three automated layers decide what is PII.”
+
+New
+
+“Two automated layers detect PII, the user confirms edge cases.”
+
+This aligns perfectly with:
+
+“data never leaves”
+
+MVP scope
+
+Compliance logic
+
+Team consensus
+
+8. When (and how) LLM can come back later
+
+The team did not ban LLMs forever.
+
+Future logic (optional experiment):
+
+if user_enabled_llm_mode:
+    ambiguous → LLM
+else:
+    ambiguous → user
+
+
+But MVP logic must work without it.
+
+9. The real mental shift you need to make
+
+You’re currently designing like this:
+
+“I must solve ambiguity with more intelligence.”
+
+The team is designing like this:
+
+“Ambiguity is a UX problem, not a model problem.”
+
+Once you accept that, everything simplifies.
+
+Final verdict (blunt but supportive)
+
+Your core engine is solid
+
+Your Layer 3 is over-engineering
+
+The team wants human-in-the-loop, not model-in-the-loop
+
+This change makes your product:
+
+Faster
+
+More trustworthy
+
+Easier to sell
+
+Easier to ship
+
+
+
+
+If there is human in the loop? And a big para has say 50 things to be reviewd by user??  What kind of UI/UX /system can be made which is efficient and user doesn’t get irritated ?
+
+
+This is exactly the right fear to have — and you’re thinking about the real problem now 👍
+If you do naïve “human-in-the-loop”, users will rage-quit in 30 seconds.
+
+The good news: the team’s suggestion only works if the UX logic is designed correctly.
+Let’s break this down calmly and practically.
+
+First: reframe the problem (very important)
+
+You’re imagining:
+
+“User must review 50 items, one by one, with Yes / No clicks.”
+
+That would be terrible UX.
+That is NOT what the team is proposing.
+
+The real design principle is:
+
+Humans review patterns, not instances.
+
+Once you get this, everything clicks.
+
+Core UX Principle (non-negotiable)
+❌ Bad UX
+
+“Is Rahul Sharma PII?”
+
+“Is Priya Sharma PII?”
+
+“Is Anil Sharma PII?”
+
+50 micro-decisions
+
+✅ Good UX
+
+“Do you want to hide all person names in this document?”
+
+“Do you want to hide addresses?”
+
+“Do you want to hide organization names?”
+
+One decision → resolves many detections.
+
+The winning system design (logic + UX)
+Step 1: Collapse detections into groups
+
+Instead of showing 50 items, internally group like this:
+
+
+PERSON (12 items)
+ADDRESS (8 items)
+ORG (5 items)
+DATE (15 items)
+
+
+Step 2: Use a Privacy Review Panel, not popups
+
+Think Gmail filters, not CAPTCHA.
+
+Side panel / modal layout:
+
+
+⚠️ Review detected sensitive info
+
+[✓] Person Names (12 found)
+    Examples: Rahul Sharma, Priya Mehta…
+
+[✓] Addresses (8 found)
+    Examples: 42 MG Road, Delhi…
+
+[ ] Organization Names (5 found)
+    Examples: Infosys, HDFC Bank
+
+[✓] Phone Numbers (auto-hidden)
+[✓] Emails (auto-hidden)
+Defaults matter:
+
+High-risk PII → pre-checked
+
+Low-risk PII → optional
+
+User effort: 10–15 seconds total
+
+Step 3: Show examples, not full lists
+
+Never dump 50 items.
+
+Rule:
+
+Show 2–3 examples
+
+Add “+9 more” silently
+
+This builds trust without overload.
+
+Advanced but powerful tricks (this is where UX becomes elegant)
+1. “Apply to all” logic (huge win)
+
+When user confirms:
+
+“Hide PERSON names”
+
+System remembers:
+
+user_policy = {
+  PERSON: hide,
+  ADDRESS: hide,
+  ORG: keep
+}
+
+
+Applies to:
+
+Entire document
+
+Entire session
+
+(Optionally) future documents
+
+One decision → future zero friction.
+
+2. Progressive disclosure (anti-irritation)
+
+Start with:
+
+Category-level toggles
+
+Only if user clicks “review details” do you show:
+
+Individual items
+
+99% users won’t.
+
+3. Inline preview instead of forms
+
+Best-in-class UX:
+
+
+Original:
+"Send this to Rahul Sharma at Infosys."
+
+Preview:
+"Send this to [NAME_1] at Infosys."
+
+
+User sees impact instantly.
+
+No mental gymnastics.
+
+4. Smart defaults (this removes 80% friction)
+
+Use sane defaults:
+
+PII Type	Default
+Aadhaar / SSN	Always redact
+Phone / Email	Redact
+Person Names	Redact
+Orgs	Keep
+Dates	Keep
+Locations	Ask
+
+Most users will just click “Proceed”.
+
+What happens if there are REALLY many ambiguous items?
+
+This is key:
+
+If you have 50 ambiguous items, your thresholds are wrong.
+
+System rule:
+
+Human review should trigger for <10% of detections
+
+If more → tighten confidence bands
+
+So logic adjustment:
+
+
+if ambiguous_count > threshold:
+    auto-apply category decision
+
+
+UX never pays for model weakness.
+
+Why this is better than LLM validation (honest truth)
+Aspect	LLM Validator	Human-in-loop (done right)
+Speed	Slow	Instant
+Trust	Black box	Transparent
+Accuracy	~95–97%	~99%
+UX	Hidden delays	Visible control
+Cost	$$$	Free
+Privacy messaging	Complicated	Clean
+A killer UX pattern you SHOULD steal
+
+“Review once, never again”
+
+Add a checkbox:
+
+☑ Remember my choices for future documents
+
+Now:
+
+First document: 15 seconds
+
+Second document: 0 seconds
+
+User feels empowered, not annoyed
+
+Final truth (important)
+
+Human-in-the-loop fails when:
+
+You ask humans to do machine work
+
+Human-in-the-loop succeeds when:
+
+Humans make policy decisions
+
+Machines do execution
+
+That’s the line your system must draw.
+
+Bottom line
+
+You don’t need:
+
+50 prompts
+
+Click fatigue
+
+LLM babysitters
+
+You need:
+
+Grouped decisions
+
+Smart defaults
+
+One-click policy control
+
+Clear previews

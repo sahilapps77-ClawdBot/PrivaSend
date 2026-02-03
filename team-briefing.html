@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrivaSend — Team Briefing</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    line-height: 1.7;
+    padding: 20px;
+  }
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 2em;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    color: #94a3b8;
+    font-size: 1.05em;
+    margin-bottom: 40px;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 20px;
+  }
+  h2 {
+    font-size: 1.4em;
+    color: #38bdf8;
+    margin: 48px 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2 .icon { font-size: 1.2em; }
+  p, li { font-size: 1em; color: #cbd5e1; }
+  p { margin-bottom: 14px; }
+
+  /* Flow steps */
+  .flow { display: flex; flex-direction: column; gap: 0; margin: 20px 0; }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    position: relative;
+    padding: 16px 0;
+  }
+  .flow-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 22px;
+    top: 56px;
+    bottom: -8px;
+    width: 2px;
+    background: #334155;
+  }
+  .step-num {
+    min-width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1em;
+    flex-shrink: 0;
+  }
+  .step-content h3 { font-size: 1.05em; color: #f1f5f9; margin-bottom: 4px; }
+  .step-content p { font-size: 0.95em; color: #94a3b8; margin-bottom: 0; }
+  .step-blue .step-num { background: #1e3a5f; color: #38bdf8; }
+  .step-green .step-num { background: #14532d; color: #4ade80; }
+  .step-purple .step-num { background: #3b0764; color: #c084fc; }
+  .step-orange .step-num { background: #431407; color: #fb923c; }
+  .step-cyan .step-num { background: #083344; color: #22d3ee; }
+  .step-pink .step-num { background: #500724; color: #f472b6; }
+
+  /* Layer cards */
+  .layer-card {
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .layer-card h3 { font-size: 1.15em; margin-bottom: 10px; }
+  .layer-card p, .layer-card li { font-size: 0.95em; }
+  .layer-card ul { padding-left: 20px; margin-top: 8px; }
+  .layer-card li { margin-bottom: 6px; }
+  .layer-1 { background: #1e3a5f; border: 1px solid #2563eb; }
+  .layer-1 h3 { color: #60a5fa; }
+  .layer-2 { background: #1a2e1a; border: 1px solid #22c55e; }
+  .layer-2 h3 { color: #4ade80; }
+  .layer-3 { background: #2d1b4e; border: 1px solid #a855f7; }
+  .layer-3 h3 { color: #c084fc; }
+  .layer-tag {
+    display: inline-block;
+    font-size: 0.75em;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .layer-1 .layer-tag { background: #2563eb33; color: #93c5fd; }
+  .layer-2 .layer-tag { background: #22c55e33; color: #86efac; }
+  .layer-3 .layer-tag { background: #a855f733; color: #d8b4fe; }
+
+  /* Example box */
+  .example-box {
+    background: #1e293b;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #e2e8f0;
+    overflow-x: auto;
+  }
+  .example-box .highlight { color: #f87171; font-weight: 600; }
+  .example-box .replaced { color: #4ade80; font-weight: 600; }
+
+  /* PII grid */
+  .pii-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .pii-group {
+    background: #1e293b;
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .pii-group h4 { font-size: 0.9em; color: #94a3b8; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .pii-tag {
+    display: inline-block;
+    background: #334155;
+    color: #e2e8f0;
+    font-size: 0.8em;
+    padding: 4px 10px;
+    border-radius: 6px;
+    margin: 3px 2px;
+  }
+
+  /* Status */
+  .stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .stat-card {
+    background: #1e293b;
+    border-radius: 10px;
+    padding: 16px 20px;
+    flex: 1;
+    min-width: 150px;
+    text-align: center;
+  }
+  .stat-card .num { font-size: 1.8em; font-weight: 700; color: #38bdf8; }
+  .stat-card .label { font-size: 0.85em; color: #94a3b8; margin-top: 4px; }
+
+  /* Pros/cons */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .compare-card {
+    background: #1e293b;
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .compare-card h4 { margin-bottom: 10px; font-size: 1em; }
+  .compare-card ul { padding-left: 18px; }
+  .compare-card li { font-size: 0.9em; margin-bottom: 6px; }
+  .pro { border: 1px solid #22c55e; }
+  .pro h4 { color: #4ade80; }
+  .con { border: 1px solid #ef4444; }
+  .con h4 { color: #f87171; }
+
+  /* CTA / Help section */
+  .help-section {
+    background: linear-gradient(135deg, #1e3a5f, #2d1b4e);
+    border-radius: 14px;
+    padding: 32px;
+    margin: 40px 0;
+    border: 1px solid #475569;
+  }
+  .help-section h2 { color: #fbbf24; margin-top: 0; }
+  .question-list { list-style: none; padding: 0; }
+  .question-list li {
+    background: #0f172a99;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    font-size: 0.95em;
+    color: #e2e8f0;
+    border-left: 3px solid #fbbf24;
+  }
+
+  /* n8n section */
+  .n8n-box {
+    background: #1a1a2e;
+    border: 1px solid #6366f1;
+    border-radius: 12px;
+    padding: 24px;
+    margin: 16px 0;
+  }
+  .n8n-box h3 { color: #818cf8; margin-bottom: 8px; }
+
+  .now-later {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .now-card, .later-card {
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .now-card { background: #14532d; border: 1px solid #22c55e; }
+  .now-card h4 { color: #4ade80; margin-bottom: 10px; }
+  .later-card { background: #1e293b; border: 1px solid #475569; }
+  .later-card h4 { color: #94a3b8; margin-bottom: 10px; }
+  .now-card li, .later-card li { font-size: 0.9em; margin-bottom: 6px; }
+
+  /* Issues */
+  .issue-card {
+    background: #1e293b;
+    border-left: 3px solid #f87171;
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+  }
+  .issue-card h4 { color: #f87171; font-size: 0.95em; margin-bottom: 4px; }
+  .issue-card p { font-size: 0.9em; color: #94a3b8; margin: 0; }
+
+  .divider {
+    border: none;
+    border-top: 1px solid #1e293b;
+    margin: 40px 0;
+  }
+
+  /* Mobile */
+  @media (max-width: 600px) {
+    body { padding: 12px; }
+    h1 { font-size: 1.5em; }
+    .compare, .now-later { grid-template-columns: 1fr; }
+    .pii-grid { grid-template-columns: 1fr; }
+    .stat-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>PrivaSend — Team Briefing</h1>
+  <p class="subtitle">Where we are, how it works, what's next, and where I need your input.<br>Last updated: 29 January 2026</p>
+
+  <!-- SECTION 1 -->
+  <h2><span class="icon">01</span> What is PrivaSend?</h2>
+  <p>PrivaSend is a privacy layer that sits between you and any AI tool (ChatGPT, Claude, etc.). When you type or upload a document, PrivaSend automatically finds sensitive information — names, phone numbers, Aadhaar numbers, bank details, anything personal — and replaces them with safe placeholders before the text ever reaches the AI.</p>
+  <p>The AI sees <strong>"[NAME_1] lives at [ADDRESS_1]"</strong> instead of <strong>"Rahul Sharma lives at 42 MG Road, Mumbai"</strong>. When the AI responds, we swap the placeholders back so you see the real answer. The AI never learns your private data.</p>
+
+  <hr class="divider">
+
+  <!-- SECTION 2 -->
+  <h2><span class="icon">02</span> How It Works — Step by Step</h2>
+  <p>Here's what happens every time someone uses PrivaSend:</p>
+
+  <div class="flow">
+    <div class="flow-step step-blue">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h3>You give us text or a file</h3>
+        <p>Paste text, or upload a PDF, Word document, or image. If it's a file, we first extract the text from it.</p>
+      </div>
+    </div>
+    <div class="flow-step step-green">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h3>Layer 1 scans for patterns (Regex)</h3>
+        <p>We run 25+ pattern-matching rules that look for things with a known format — email addresses, phone numbers, credit card numbers, Aadhaar, PAN, etc. This is instant (under 10 milliseconds).</p>
+      </div>
+    </div>
+    <div class="flow-step step-purple">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h3>Layer 2 scans for meaning (AI/NER)</h3>
+        <p>An AI model reads the text and understands context — it catches things like person names, street addresses, and organization names that don't follow a fixed pattern. Takes about 100–200ms.</p>
+      </div>
+    </div>
+    <div class="flow-step step-orange">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <h3>Layer 3 double-checks uncertain matches (Local LLM)</h3>
+        <p>Any detection that the system isn't fully confident about gets sent to a local AI (Llama 3, running on our own server — no data leaves). It asks: "Is this really PII?" If yes, we keep it. If no, we drop it.</p>
+      </div>
+    </div>
+    <div class="flow-step step-cyan">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <h3>All PII gets replaced with placeholders</h3>
+        <p>"Rahul Sharma" becomes [NAME_1], "rahul@email.com" becomes [EMAIL_1]. We keep a private mapping table so we can reverse this later.</p>
+      </div>
+    </div>
+    <div class="flow-step step-pink">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <h3>Safe text goes to the AI, response comes back</h3>
+        <p>The AI only sees placeholders. When it responds, we swap the placeholders back with the real values. You get a complete, useful answer — and the AI never saw your private data.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 3: THREE LAYERS IN DETAIL -->
+  <h2><span class="icon">03</span> The Three Detection Layers — Explained</h2>
+  <p>We don't rely on a single method. We use three layers, each catching what the others miss. Think of it like airport security — multiple checkpoints, each looking for different things.</p>
+
+  <div class="layer-card layer-1">
+    <span class="layer-tag">LAYER 1 — REGEX</span>
+    <h3>Pattern Matching (the fastest, most reliable layer)</h3>
+    <p><strong>What it does:</strong> Looks for data that follows a known, fixed format. An email always has an @ sign and a domain. A credit card is always 16 digits. An Aadhaar number is always 12 digits in groups of 4. Regex rules check if the text matches these patterns.</p>
+    <p><strong>How it works:</strong> We've written 25+ custom rules (called "regular expressions") that say: <em>"If you see something that looks like [this pattern], flag it."</em> For example:</p>
+    <ul>
+      <li><strong>Email rule:</strong> anything that looks like <code>something@something.something</code></li>
+      <li><strong>Phone rule:</strong> 10+ digits with optional country code, dashes, or spaces</li>
+      <li><strong>Aadhaar rule:</strong> exactly 12 digits, grouped as 4-4-4</li>
+      <li><strong>Credit card rule:</strong> 13–19 digits that pass a mathematical check (Luhn algorithm)</li>
+      <li><strong>API key rule:</strong> strings starting with <code>sk-</code>, <code>AKIA</code>, <code>ghp_</code>, etc.</li>
+    </ul>
+    <p><strong>Strengths:</strong> Extremely fast (under 10ms for a full page). Zero false negatives for structured data. No AI needed — pure logic.</p>
+    <p><strong>Weakness:</strong> Can't catch things without a fixed format — like a person's name or a street address. "Priya Sharma" doesn't follow any pattern. That's where Layer 2 comes in.</p>
+  </div>
+
+  <div class="layer-card layer-2">
+    <span class="layer-tag">LAYER 2 — PRESIDIO + spaCy (AI/NER)</span>
+    <h3>Named Entity Recognition (understands language)</h3>
+    <p><strong>What it does:</strong> Uses Microsoft's Presidio library combined with a trained AI model (spaCy) to <em>read and understand</em> the text. It recognizes names, addresses, organizations, and locations by understanding the sentence context — not by matching a pattern.</p>
+    <p><strong>Runs 100% locally:</strong> Both Presidio and the spaCy AI model are installed and run entirely on our own server. Even though spaCy is an AI model, it is <strong>not a cloud service</strong> — it's a downloaded model file that runs offline. No text is ever sent to Microsoft, spaCy, or any external service. Your data stays on our machine.</p>
+    <p><strong>How it works:</strong> The spaCy model has been trained on millions of English sentences. It knows that in the sentence <em>"Send this to Priya Sharma at Infosys, Bangalore"</em> — Priya Sharma is a person, Infosys is an organization, and Bangalore is a location. It assigns a confidence score (0 to 1) to each detection.</p>
+    <ul>
+      <li><strong>Person names:</strong> "John Smith", "Priya Sharma", "Dr. Anil Kapoor"</li>
+      <li><strong>Addresses:</strong> "42 Oak Street, New York, NY 10001"</li>
+      <li><strong>Organizations:</strong> "Goldman Sachs", "Infosys", "HDFC Bank"</li>
+      <li><strong>Locations:</strong> "Mumbai", "California", "Connaught Place"</li>
+    </ul>
+    <p><strong>Strengths:</strong> Catches PII that has no fixed pattern. Understands context.</p>
+    <p><strong>Weakness:</strong> Not perfect — sometimes flags common words as names (false positives). Confidence varies. That's why we added Layer 3.</p>
+  </div>
+
+  <div class="layer-card layer-3">
+    <span class="layer-tag">LAYER 3 — LOCAL LLM (Llama 3)</span>
+    <h3>Uncertainty Resolver (the double-checker)</h3>
+    <p><strong>What it does:</strong> When Layer 1 or Layer 2 flags something but isn't very confident (confidence score between 0.60 and 0.85), we ask a large language model: <em>"Is this actually sensitive personal information?"</em> The LLM reads the surrounding context and gives a yes/no answer.</p>
+    <p><strong>How it works:</strong> We run Llama 3 (8 billion parameters) locally on our own server using Ollama. Just like Layer 2, <strong>this is fully local</strong> — Ollama runs the AI model on our own machine, not in the cloud. No data is sent to Meta, OpenAI, or any third party. The model gets a prompt like:</p>
+    <div class="example-box">
+      "In the following text, is '<span class="highlight">Priya Sharma</span>' a real person's name (PII) or a generic/fictional reference?"
+    </div>
+    <p><strong>Important detail:</strong> Only uncertain detections go to the LLM. High-confidence matches (above 0.85) are accepted directly. Low-confidence matches (below 0.60) are dropped. This keeps LLM usage minimal.</p>
+    <p><strong>Strengths:</strong> Reduces false positives. All processing stays on our server — fully private. All three layers (Regex, Presidio/spaCy, and Llama 3) run locally. <strong>Zero data leaves our infrastructure at any point during detection.</strong></p>
+    <p><strong>Weakness:</strong> Slow (adds 15–50 seconds). The 8B model isn't as smart as GPT-4. This is our biggest open problem right now.</p>
+  </div>
+
+  <h3 style="color: #e2e8f0; margin-top: 24px;">How the layers work together:</h3>
+  <div class="example-box">
+    <strong>Input text:</strong><br><br>
+    "Please email <span class="highlight">rahul.sharma@gmail.com</span> or call <span class="highlight">+91 98765 43210</span>.<br>
+    &nbsp;The account holder is <span class="highlight">Rahul Sharma</span>, Aadhaar <span class="highlight">1234 5678 9012</span>."<br><br>
+
+    <strong>Layer 1 (Regex) catches:</strong> email, phone, Aadhaar — all have fixed patterns ✓<br>
+    <strong>Layer 2 (Presidio) catches:</strong> "Rahul Sharma" as PERSON (confidence: 0.92) ✓<br>
+    <strong>Layer 3 (LLM):</strong> Not needed — all detections are high-confidence ✓<br><br>
+
+    <strong>Redacted output:</strong><br>
+    "Please email <span class="replaced">[EMAIL_1]</span> or call <span class="replaced">[PHONE_1]</span>.<br>
+    &nbsp;The account holder is <span class="replaced">[NAME_1]</span>, Aadhaar <span class="replaced">[AADHAAR_1]</span>."
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 4: PII TYPES -->
+  <h2><span class="icon">04</span> What PII Do We Catch?</h2>
+  <p>We currently detect 25+ types of personal information, grouped below:</p>
+
+  <div class="pii-grid">
+    <div class="pii-group">
+      <h4>Identity</h4>
+      <span class="pii-tag">Person Names</span>
+      <span class="pii-tag">Date of Birth</span>
+      <span class="pii-tag">Passport</span>
+      <span class="pii-tag">Driver's License</span>
+    </div>
+    <div class="pii-group">
+      <h4>Contact</h4>
+      <span class="pii-tag">Email</span>
+      <span class="pii-tag">Phone Number</span>
+      <span class="pii-tag">Address</span>
+      <span class="pii-tag">Location</span>
+    </div>
+    <div class="pii-group">
+      <h4>India-Specific</h4>
+      <span class="pii-tag">Aadhaar</span>
+      <span class="pii-tag">PAN</span>
+      <span class="pii-tag">UPI ID</span>
+      <span class="pii-tag">Indian Bank A/C</span>
+    </div>
+    <div class="pii-group">
+      <h4>Financial</h4>
+      <span class="pii-tag">Credit Card</span>
+      <span class="pii-tag">IBAN</span>
+      <span class="pii-tag">Bank Account</span>
+      <span class="pii-tag">SWIFT/BIC</span>
+    </div>
+    <div class="pii-group">
+      <h4>Government IDs</h4>
+      <span class="pii-tag">SSN (US)</span>
+      <span class="pii-tag">EIN (US)</span>
+      <span class="pii-tag">NI Number (UK)</span>
+      <span class="pii-tag">SIN (Canada)</span>
+    </div>
+    <div class="pii-group">
+      <h4>Technical / Other</h4>
+      <span class="pii-tag">API Keys</span>
+      <span class="pii-tag">Credentials</span>
+      <span class="pii-tag">IP Address</span>
+      <span class="pii-tag">MAC Address</span>
+      <span class="pii-tag">Crypto Wallets</span>
+      <span class="pii-tag">VIN</span>
+      <span class="pii-tag">Medical Record #</span>
+    </div>
+  </div>
+
+  <h3 style="color: #f87171; margin-top: 28px;">What we still need to add:</h3>
+  <p>The following PII categories are <strong>not yet covered</strong> and need to be built. This is an open discussion — which of these matter most for our target users?</p>
+
+  <div class="pii-grid">
+    <div class="pii-group" style="border: 1px solid #f87171;">
+      <h4 style="color: #f87171;">Medical (gaps)</h4>
+      <span class="pii-tag">Health Insurance IDs</span>
+      <span class="pii-tag">Prescription Numbers</span>
+      <span class="pii-tag">Diagnosis Codes (ICD-10)</span>
+      <span class="pii-tag">Health Plan Numbers</span>
+      <span class="pii-tag">HIPAA Identifiers</span>
+    </div>
+    <div class="pii-group" style="border: 1px solid #f87171;">
+      <h4 style="color: #f87171;">Financial (gaps)</h4>
+      <span class="pii-tag">GSTIN (India Tax ID)</span>
+      <span class="pii-tag">TIN (Tax ID)</span>
+      <span class="pii-tag">Mutual Fund Folio #</span>
+      <span class="pii-tag">Insurance Policy #</span>
+      <span class="pii-tag">Salary / Income Figures</span>
+    </div>
+    <div class="pii-group" style="border: 1px solid #f87171;">
+      <h4 style="color: #f87171;">Corporate (gaps)</h4>
+      <span class="pii-tag">Employee IDs</span>
+      <span class="pii-tag">Internal Project Codes</span>
+      <span class="pii-tag">Trade Secrets</span>
+      <span class="pii-tag">Proprietary Data</span>
+    </div>
+    <div class="pii-group" style="border: 1px solid #f87171;">
+      <h4 style="color: #f87171;">Sensitive Personal (gaps)</h4>
+      <span class="pii-tag">Biometric Data</span>
+      <span class="pii-tag">Genetic Information</span>
+      <span class="pii-tag">Caste / Religion</span>
+      <span class="pii-tag">Sexual Orientation</span>
+      <span class="pii-tag">Vehicle RC (India)</span>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 5: WHY NOT N8N YET -->
+  <h2><span class="icon">05</span> "When Are We Using n8n?"</h2>
+  <p>Short answer: <strong>Phase 2, after the core logic is proven.</strong></p>
+
+  <div class="n8n-box">
+    <h3>Why we're building the engine first</h3>
+    <p>Think of it this way: n8n is the <strong>car body</strong> — it connects things, routes data, handles workflows. But right now we're building the <strong>engine</strong> — the PII detection logic that actually does the hard work. You can always bolt an engine into a car body later, but you can't drive without an engine.</p>
+    <p>The detection logic — deciding what is PII, what isn't, how confident we are, how to redact it without breaking the text — <strong>this is the hard part.</strong> n8n, Supabase, authentication, dashboards — those are integration and plumbing. We can wire those up in days once the core works reliably.</p>
+  </div>
+
+  <div class="now-later">
+    <div class="now-card">
+      <h4>Building Now (the hard part)</h4>
+      <ul>
+        <li>PII detection engine (3 layers)</li>
+        <li>Reversible redaction logic</li>
+        <li>Accuracy tuning & false positive reduction</li>
+        <li>Speed optimization</li>
+        <li>Edge case handling</li>
+        <li>Testing & evaluation</li>
+      </ul>
+    </div>
+    <div class="later-card">
+      <h4>Plugging In Later (Phase 2)</h4>
+      <ul>
+        <li>n8n workflow integration</li>
+        <li>Supabase database & logging</li>
+        <li>User authentication</li>
+        <li>Usage dashboard & analytics</li>
+        <li>API keys & rate limiting</li>
+        <li>Cloud deployment</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>When Phase 2 starts, we'll wrap our engine as an HTTP microservice and call it from an n8n workflow node. The detection code stays exactly the same — we just give it a new front door.</p>
+
+  <hr class="divider">
+
+  <!-- SECTION 6: WHERE WE ARE -->
+  <h2><span class="icon">06</span> Where We Are Right Now</h2>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="num">25+</div>
+      <div class="label">PII types detected</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">187</div>
+      <div class="label">Tests passing</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">3</div>
+      <div class="label">Detection layers</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">Live</div>
+      <div class="label">test.smcloud.cloud</div>
+    </div>
+  </div>
+
+  <p><strong>What's working:</strong></p>
+  <ul style="padding-left: 20px; margin-bottom: 16px;">
+    <li>Full detection + redaction pipeline (text in → redacted text out)</li>
+    <li>Send-to-AI flow (redact → send to LLM → de-redact response)</li>
+    <li>Web interface deployed and accessible</li>
+    <li>Indian PII support (Aadhaar, PAN, UPI, Indian addresses)</li>
+    <li>Value-aware deduplication (same PII value always gets same placeholder)</li>
+  </ul>
+
+  <p><strong>What's coming later (not built yet):</strong></p>
+  <ul style="padding-left: 20px; margin-bottom: 16px;">
+    <li>File upload support (PDF, DOCX, images with OCR) — this is Phase 1B</li>
+  </ul>
+  <p style="font-size: 0.95em; color: #94a3b8;"><strong>Why text first?</strong> Our priority right now is to master PII detection on plain text input — get the accuracy right, reduce false positives, optimise speed. Once the core detection engine is solid, converting PDFs/documents/images to text is a relatively straightforward engineering task. The hard part is the detection logic, not the file parsing.</p>
+
+  <hr class="divider">
+
+  <!-- SECTION 7: PROBLEMS -->
+  <h2><span class="icon">07</span> What's Not Working Well</h2>
+
+  <div class="issue-card">
+    <h4>Speed — LLM validation takes 35–50 seconds</h4>
+    <p>Llama 3 (8B) running on CPU is too slow. Every uncertain entity adds ~15 seconds. This makes the user experience painful. We need to either speed it up (GPU, batching, better thresholds) or rethink the approach.</p>
+  </div>
+
+  <div class="issue-card">
+    <h4>Accuracy gaps compared to ChatGPT-level output</h4>
+    <p>When we compare our redacted output to what a state-of-the-art model would catch, there are visible misses — especially with context-dependent PII, informal text, and edge cases. An 8B model simply doesn't have the reasoning power of GPT-4 or Claude.</p>
+  </div>
+
+  <div class="issue-card">
+    <h4>False positives — flagging things that aren't PII</h4>
+    <p>Presidio sometimes flags common words, abbreviations, or tech terms as person names or organizations. We've added 80+ terms to a blocklist, but it's a whack-a-mole game.</p>
+  </div>
+
+  <div class="issue-card">
+    <h4>Mobile experience needs more work</h4>
+    <p>The web interface has scroll/navigation issues on mobile after results appear. Being investigated.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 8: LLM DECISION -->
+  <h2><span class="icon">08</span> The Big Tradeoff: Local vs Cloud LLM</h2>
+  <p>Our Layer 3 (LLM validator) is the bottleneck. Here are our options:</p>
+
+  <div class="compare">
+    <div class="compare-card pro">
+      <h4>Keep It Local (Current: Ollama + Llama 3)</h4>
+      <ul>
+        <li>Zero data leaves our server — full privacy</li>
+        <li>No per-request cost</li>
+        <li>No dependency on external APIs</li>
+        <li>Slow (35–50s on CPU)</li>
+        <li>Less accurate than GPT-4</li>
+        <li>Can improve with GPU ($20–50/mo)</li>
+      </ul>
+    </div>
+    <div class="compare-card con">
+      <h4>Switch to Cloud LLM (GPT-4o-mini / Haiku)</h4>
+      <ul>
+        <li>Fast (1–3 seconds)</li>
+        <li>Much more accurate</li>
+        <li>Cheap (~$0.001 per call)</li>
+        <li>Entity values leave our server (but not full documents)</li>
+        <li>Depends on external API uptime</li>
+        <li>Contradicts "your data never leaves" promise</li>
+      </ul>
+    </div>
+  </div>
+  <h3 style="color: #e2e8f0; margin-top: 24px;">If we used a cloud API, what data would actually be sent?</h3>
+  <p>This is important to understand. The LLM validator does <strong>not</strong> send your full document to any external service. Here's exactly what would be sent in a cloud API call:</p>
+  <div class="example-box">
+    <strong>What gets sent:</strong><br>
+    "Is '<span class="highlight">Priya Sharma</span>' a real person's name, or a generic/fictional reference? Answer YES or NO."<br><br>
+    <strong>What does NOT get sent:</strong><br>
+    The full document, the surrounding text, other PII values, the user's identity, or any context about what the document is about.
+  </div>
+  <p>So the cloud API would see isolated fragments — a name here, a number there — with no context about who they belong to or what document they came from. It's like showing someone a puzzle piece without the puzzle.</p>
+  <p><strong>Is this acceptable?</strong> That's a decision we need to make as a team. Some may feel even isolated values are too much exposure. Others may feel the privacy risk is negligible compared to the speed and accuracy gain. There's no single right answer — it depends on what our users expect and what we promise them.</p>
+
+  <p style="margin-top: 16px;"><strong>Other options to explore:</strong> Run a larger local model (Llama 70B) with GPU. Fine-tune a small model specifically for PII classification. Skip LLM validation entirely and invest in better confidence thresholds. Each has tradeoffs — we need to decide together.</p>
+
+  <hr class="divider">
+
+  <!-- SECTION 9: HELP NEEDED -->
+  <div class="help-section">
+    <h2><span class="icon">09</span> I Need Your Help</h2>
+    <p style="color: #fde68a; margin-bottom: 20px;">The core detection engine works. But making it <strong>production-grade</strong> requires decisions that shouldn't be made alone. I need the team's input on these questions:</p>
+
+    <ul class="question-list">
+      <li><strong>What accuracy is acceptable?</strong> Right now we catch ~94% of PII in adversarial tests. Is 95% enough for MVP? Do we need 99%? Does it vary by PII type (e.g., 99% for SSN/Aadhaar but 90% for organization names)?</li>
+      <li><strong>What's "production-grade" mean for us?</strong> What does a customer expect? How polished does the output need to be before we can show it to real users?</li>
+      <li><strong>What should be in MVP vs later?</strong> We detect 25+ PII types. Is that enough? Are some types more important than others for our target users? Should we focus depth (accuracy) over breadth (more types)?</li>
+      <li><strong>How do we minimize LLM dependency?</strong> Can we get good enough results with just Regex + Presidio? What confidence threshold eliminates the need for Layer 3 without losing too much accuracy?</li>
+      <li><strong>What response time is acceptable?</strong> Right now: &lt;1 second without LLM, 35–50 seconds with LLM. What should we target?</li>
+      <li><strong>How should we handle the speed vs privacy tradeoff?</strong> Local LLM (slow, private) vs Cloud LLM (fast, some data exposure) vs skip LLM entirely (fastest, lower accuracy)?</li>
+      <li><strong>What edge cases matter most?</strong> Mixed PII in one sentence? PII in tables/PDFs? Indian-format addresses? Multilingual text? We can't handle everything at once — what's the priority?</li>
+      <li><strong>How do we evaluate quality?</strong> Should we build a test dataset together? What real-world inputs should we test against? What does "good enough" look like in practice?</li>
+    </ul>
+
+    <p style="color: #e2e8f0; margin-top: 20px;">I would really appreciate it if everyone takes the time to read through this carefully. These are decisions that will shape the product, and I genuinely need each person's perspective. Please share your thoughts, suggestions, or even just your gut reactions in the group. I'm eagerly waiting for your inputs — every viewpoint matters and will help us build this the right way.</p>
+  </div>
+
+  <hr class="divider">
+
+  <p style="text-align: center; color: #475569; font-size: 0.85em; margin: 32px 0 16px;">PrivaSend Team Briefing — January 2026 — Confidential</p>
+
+</div>
+</body>
+</html>
