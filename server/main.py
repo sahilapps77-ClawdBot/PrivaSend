@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import io
 import logging
+import shutil
+import tempfile
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -19,6 +22,7 @@ from tools.detect_pii import detect, bucket_entities, DetectedEntity, PIIType
 from tools.redact import redact, deredact, RedactionResult
 from tools.pii_categories import get_category, get_category_order
 from tools.openrouter import send_prompt, get_available_models, OpenRouterError
+from tools.file_extractor import extract_text_from_file, ExtractionError, UNSUPPORTED_TYPES
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -404,6 +408,85 @@ async def api_send_to_ai(request: Request, body: SendToAIInput):
 async def api_get_models():
     """Get available AI models for the Send to AI feature."""
     return ModelsResponse(models=get_available_models())
+
+
+# ---------------------------------------------------------------------------
+# File upload endpoint
+# ---------------------------------------------------------------------------
+
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+
+@app.post("/api/upload")
+async def api_upload_file(
+    file: UploadFile = File(...),
+):
+    """
+    Upload and extract text from PDF, DOCX, TXT, or image files.
+    
+    Returns extracted text which can then be sent to /api/analyze-for-review
+    """
+    log.info("POST /api/upload  filename=%s content_type=%s", file.filename, file.content_type)
+    
+    # Check file type
+    content_type = file.content_type
+    if content_type not in SUPPORTED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {content_type}. Supported: {', '.join(SUPPORTED_TYPES.keys())}"
+        )
+    
+    # Read file content
+    try:
+        file_bytes = await file.read()
+    except Exception as e:
+        log.error("Failed to read uploaded file: %s", e)
+        raise HTTPException(status_code=400, detail="Could not read file")
+    
+    # Check file size
+    if len(file_bytes) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large: {len(file_bytes)} bytes. Max: {MAX_FILE_SIZE} bytes (10MB)"
+        )
+    
+    # Extract text
+    t0 = time.perf_counter()
+    try:
+        extracted_text = extract_text_from_file(file_bytes, content_type)
+    except ExtractionError as e:
+        log.error("Extraction failed: %s", e)
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        log.error("Unexpected extraction error: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to extract text from file")
+    
+    elapsed = (time.perf_counter() - t0) * 1000
+    log.info("  extracted %d chars in %.0f ms", len(extracted_text), elapsed)
+    
+    # Check if we got any text
+    if not extracted_text or not extracted_text.strip():
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "filename": file.filename,
+                "content_type": content_type,
+                "text": "",
+                "char_count": 0,
+                "warning": "No text found in file. It may be a scanned image without OCR support or an empty document.",
+                "elapsed_ms": round(elapsed, 1),
+            }
+        )
+    
+    return {
+        "success": True,
+        "filename": file.filename,
+        "content_type": content_type,
+        "text": extracted_text,
+        "char_count": len(extracted_text),
+        "elapsed_ms": round(elapsed, 1),
+    }
 
 
 # ---------------------------------------------------------------------------
