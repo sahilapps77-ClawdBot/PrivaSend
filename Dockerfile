@@ -2,13 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# System deps for spaCy, PDF processing, and OCR
+# System deps for spaCy (build tools only)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        build-essential \
-        poppler-utils \
-        tesseract-ocr \
-        libtesseract-dev && \
+    apt-get install -y --no-install-recommends build-essential && \
     rm -rf /var/lib/apt/lists/*
 
 # Python deps

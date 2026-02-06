@@ -30,12 +30,12 @@ class ExtractionError(Exception):
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
-    """Extract text from PDF using pdfplumber."""
+    """Extract text from PDF using pdfplumber if available, fallback to basic extraction."""
     try:
         import pdfplumber
     except ImportError:
-        log.error("pdfplumber not installed")
-        raise ExtractionError("PDF support not available. Install pdfplumber.")
+        log.warning("pdfplumber not installed, trying PyPDF2 fallback")
+        return extract_text_from_pdf_fallback(file_bytes)
     
     text_parts = []
     try:
@@ -45,7 +45,30 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
                 if page_text:
                     text_parts.append(f"--- Page {i+1} ---\n{page_text}")
     except Exception as e:
-        log.error(f"PDF extraction failed: {e}")
+        log.error(f"PDF extraction failed with pdfplumber: {e}")
+        # Try fallback
+        return extract_text_from_pdf_fallback(file_bytes)
+    
+    return "\n\n".join(text_parts) if text_parts else ""
+
+
+def extract_text_from_pdf_fallback(file_bytes: bytes) -> str:
+    """Fallback PDF extraction using PyPDF2 (pure Python, no system deps)."""
+    try:
+        import PyPDF2
+    except ImportError:
+        log.error("Neither pdfplumber nor PyPDF2 available")
+        raise ExtractionError("PDF support not available. Install pdfplumber or PyPDF2.")
+    
+    text_parts = []
+    try:
+        reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+        for i, page in enumerate(reader.pages):
+            page_text = page.extract_text()
+            if page_text:
+                text_parts.append(f"--- Page {i+1} ---\n{page_text}")
+    except Exception as e:
+        log.error(f"PyPDF2 extraction failed: {e}")
         raise ExtractionError(f"Could not read PDF: {e}")
     
     return "\n\n".join(text_parts) if text_parts else ""
@@ -90,9 +113,9 @@ def extract_text_from_image(file_bytes: bytes) -> str:
     try:
         from PIL import Image
         import pytesseract
-    except ImportError:
-        log.error("pytesseract or PIL not installed")
-        raise ExtractionError("OCR not available. Install pytesseract and Pillow.")
+    except ImportError as e:
+        log.error(f"OCR dependencies missing: {e}")
+        raise ExtractionError("OCR not available. Image text extraction requires pytesseract and Pillow.")
     
     try:
         image = Image.open(io.BytesIO(file_bytes))
