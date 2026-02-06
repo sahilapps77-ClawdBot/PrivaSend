@@ -633,7 +633,14 @@
     <!-- Input Card -->
     <div class="glass card">
       <label for="input-text">Input Text</label>
-      <textarea id="input-text" placeholder="Paste text containing PII here...&#10;&#10;Example: My name is John Smith, email john@example.com, SSN 123-45-6789"></textarea>
+      <div class="file-upload-row" style="margin-bottom: 0.75rem;">
+        <input type="file" id="file-input" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.tiff" style="display: none;">
+        <button class="btn-secondary" id="btn-upload" style="flex: 0 0 auto; padding: 0.6rem 1rem; font-size: 0.85rem;">
+          📎 Upload File
+        </button>
+        <span id="file-name" style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-left: 0.5rem;"></span>
+      </div>
+      <textarea id="input-text" placeholder="Paste text containing PII here, or upload a file...&#10;&#10;Example: My name is John Smith, email john@example.com, SSN 123-45-6789&#10;&#10;Supported: PDF, DOCX, TXT, PNG, JPG"></textarea>
       <div class="btn-row">
         <button class="btn-primary" id="btn-analyze">Analyze PII</button>
         <button class="btn-secondary" id="btn-clear">Clear</button>
@@ -1166,6 +1173,58 @@ async function copyToClipboard(text, msg) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// File Upload
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function handleFileUpload(file) {
+  if (!file) return;
+  
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSize) {
+    showError('File too large. Max size: 10MB');
+    return;
+  }
+  
+  const btn = document.getElementById('btn-upload');
+  const originalText = btn.textContent;
+  btn.textContent = '⏳ Uploading...';
+  btn.disabled = true;
+  hideError();
+  
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Upload failed (${res.status})`);
+    }
+    
+    const data = await res.json();
+    
+    if (data.text) {
+      document.getElementById('input-text').value = data.text;
+      document.getElementById('file-name').textContent = `✓ ${file.name} (${data.char_count} chars)`;
+      showToast(`File uploaded! Extracted ${data.char_count} characters.`);
+    } else if (data.warning) {
+      showError(data.warning);
+      document.getElementById('file-name').textContent = `⚠ ${file.name}`;
+    }
+  } catch (e) {
+    showError(e.message || 'Failed to upload file.');
+    document.getElementById('file-name').textContent = `✗ ${file.name}`;
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Event Listeners
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1188,6 +1247,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-copy-ai').addEventListener('click', () => {
     const text = document.getElementById('ai-response-content').textContent;
     copyToClipboard(text, 'AI response copied!');
+  });
+
+  // File upload listeners
+  const fileInput = document.getElementById('file-input');
+  const uploadBtn = document.getElementById('btn-upload');
+  
+  uploadBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileUpload(e.target.files[0]);
+    }
   });
 
   // Close modal on backdrop click
