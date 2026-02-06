@@ -22,7 +22,7 @@ from tools.detect_pii import detect, bucket_entities, DetectedEntity, PIIType
 from tools.redact import redact, deredact, RedactionResult
 from tools.pii_categories import get_category, get_category_order
 from tools.openrouter import send_prompt, get_available_models, OpenRouterError
-from tools.file_extractor import extract_text_from_file, ExtractionError, UNSUPPORTED_TYPES
+from tools.file_extractor import extract_text_from_file, ExtractionError, SUPPORTED_TYPES
 
 # ---------------------------------------------------------------------------
 # Logging
