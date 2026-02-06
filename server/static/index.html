@@ -762,6 +762,21 @@
   </div>
 </div>
 
+<!-- Upload Choice Modal -->
+<div class="modal" id="upload-choice-modal">
+  <div class="glass modal-content">
+    <h3>Text Already Exists</h3>
+    <p style="color: rgba(255,255,255,0.7); margin-bottom: 1.5rem; font-size: 0.9rem;">
+      The text area already contains content. What would you like to do?
+    </p>
+    <div class="btn-row" style="flex-direction: column; gap: 0.75rem;">
+      <button class="btn-primary" id="btn-upload-replace">Replace with file content</button>
+      <button class="btn-secondary" id="btn-upload-append">Append file content</button>
+      <button class="btn-secondary" id="btn-upload-cancel">Cancel upload</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast notification -->
 <div class="toast" id="toast"></div>
 
@@ -1176,6 +1191,40 @@ async function copyToClipboard(text, msg) {
 // File Upload
 // ═══════════════════════════════════════════════════════════════════════════
 
+let pendingUploadFile = null;
+let pendingUploadData = null;
+
+function openUploadChoiceModal(file) {
+  pendingUploadFile = file;
+  document.getElementById('upload-choice-modal').classList.add('visible');
+}
+
+function closeUploadChoiceModal() {
+  document.getElementById('upload-choice-modal').classList.remove('visible');
+  pendingUploadFile = null;
+  pendingUploadData = null;
+}
+
+function handleUploadReplace() {
+  if (pendingUploadData) {
+    document.getElementById('input-text').value = pendingUploadData.text;
+    document.getElementById('file-name').textContent = '✓ ' + pendingUploadFile.name + ' (' + pendingUploadData.char_count + ' chars, replaced)';
+    showToast('File content replaced existing text. ' + pendingUploadData.char_count + ' characters.');
+  }
+  closeUploadChoiceModal();
+}
+
+function handleUploadAppend() {
+  if (pendingUploadData) {
+    const existingText = document.getElementById('input-text').value;
+    const separator = existingText ? '\n\n--- File Content ---\n\n' : '';
+    document.getElementById('input-text').value = existingText + separator + pendingUploadData.text;
+    document.getElementById('file-name').textContent = '✓ ' + pendingUploadFile.name + ' (' + pendingUploadData.char_count + ' chars, appended)';
+    showToast('File content appended. ' + pendingUploadData.char_count + ' characters added.');
+  }
+  closeUploadChoiceModal();
+}
+
 async function handleFileUpload(file) {
   if (!file) return;
 
@@ -1188,6 +1237,7 @@ async function handleFileUpload(file) {
   const btn = document.getElementById('btn-upload');
   const analyzeBtn = document.getElementById('btn-analyze');
   const originalText = btn.textContent;
+  const existingText = document.getElementById('input-text').value.trim();
 
   // Disable buttons and show loading
   btn.textContent = '⏳ Extracting...';
@@ -1214,9 +1264,16 @@ async function handleFileUpload(file) {
     const data = await res.json();
 
     if (data.text) {
-      document.getElementById('input-text').value = data.text;
-      document.getElementById('file-name').textContent = '✓ ' + file.name + ' (' + data.char_count + ' chars)';
-      showToast('File ready! ' + data.char_count + ' characters extracted. Click "Analyze PII" to continue.');
+      if (existingText) {
+        // Text exists - show choice modal
+        pendingUploadData = data;
+        openUploadChoiceModal(file);
+      } else {
+        // Empty textarea - just insert
+        document.getElementById('input-text').value = data.text;
+        document.getElementById('file-name').textContent = '✓ ' + file.name + ' (' + data.char_count + ' chars)';
+        showToast('File ready! ' + data.char_count + ' characters extracted. Click "Analyze PII" to continue.');
+      }
     } else if (data.warning) {
       showError(data.warning);
       document.getElementById('file-name').textContent = '⚠ ' + file.name;
@@ -1261,13 +1318,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // File upload listeners
   const fileInput = document.getElementById('file-input');
   const uploadBtn = document.getElementById('btn-upload');
-  
+
   uploadBtn.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', (e) => {
     if (e.target.files && e.target.files[0]) {
       handleFileUpload(e.target.files[0]);
     }
   });
+
+  // Upload choice modal listeners
+  document.getElementById('btn-upload-replace').addEventListener('click', handleUploadReplace);
+  document.getElementById('btn-upload-append').addEventListener('click', handleUploadAppend);
+  document.getElementById('btn-upload-cancel').addEventListener('click', closeUploadChoiceModal);
 
   // Close modal on backdrop click
   document.getElementById('ai-modal').addEventListener('click', (e) => {
