@@ -1178,49 +1178,58 @@ async function copyToClipboard(text, msg) {
 
 async function handleFileUpload(file) {
   if (!file) return;
-  
+
   const maxSize = 10 * 1024 * 1024; // 10MB
   if (file.size > maxSize) {
     showError('File too large. Max size: 10MB');
     return;
   }
-  
+
   const btn = document.getElementById('btn-upload');
+  const analyzeBtn = document.getElementById('btn-analyze');
   const originalText = btn.textContent;
-  btn.textContent = '⏳ Uploading...';
+
+  // Disable buttons and show loading
+  btn.textContent = '⏳ Extracting...';
   btn.disabled = true;
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = 'Wait...';
+  document.getElementById('file-name').textContent = '📄 ' + file.name + ' (processing...)';
   hideError();
-  
+
   try {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     const res = await fetch('/api/upload', {
       method: 'POST',
       body: formData,
     });
-    
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || `Upload failed (${res.status})`);
+      throw new Error(err.detail || 'Upload failed (' + res.status + ')');
     }
-    
+
     const data = await res.json();
-    
+
     if (data.text) {
       document.getElementById('input-text').value = data.text;
-      document.getElementById('file-name').textContent = `✓ ${file.name} (${data.char_count} chars)`;
-      showToast(`File uploaded! Extracted ${data.char_count} characters.`);
+      document.getElementById('file-name').textContent = '✓ ' + file.name + ' (' + data.char_count + ' chars)';
+      showToast('File ready! ' + data.char_count + ' characters extracted. Click "Analyze PII" to continue.');
     } else if (data.warning) {
       showError(data.warning);
-      document.getElementById('file-name').textContent = `⚠ ${file.name}`;
+      document.getElementById('file-name').textContent = '⚠ ' + file.name;
     }
   } catch (e) {
     showError(e.message || 'Failed to upload file.');
-    document.getElementById('file-name').textContent = `✗ ${file.name}`;
+    document.getElementById('file-name').textContent = '✗ ' + file.name;
   } finally {
+    // Restore buttons
     btn.textContent = originalText;
     btn.disabled = false;
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = 'Analyze PII';
   }
 }
 
