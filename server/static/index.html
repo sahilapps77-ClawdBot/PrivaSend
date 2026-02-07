@@ -1544,15 +1544,18 @@ async function handleLogin(e) {
     
     const data = await res.json();
     
-    if (data.success && data.access_token) {
+    if (res.ok && data.success && data.access_token) {
       authToken = data.access_token;
       currentUser = data.user;
       localStorage.setItem('privasend_token', authToken);
       updateAuthUI();
       closeLoginModal();
       showToast('Welcome back, ' + data.user.email + '!');
+      // Clear form
+      document.getElementById('login-email').value = '';
+      document.getElementById('login-password').value = '';
     } else {
-      showError(data.message || 'Login failed');
+      showError(data.detail || data.message || 'Login failed. Check your credentials.');
     }
   } catch (e) {
     showError('Login failed: ' + e.message);
@@ -1573,11 +1576,14 @@ async function handleSignup(e) {
     
     const data = await res.json();
     
-    if (data.success) {
+    if (res.ok && data.success) {
       showToast(data.message || 'Signup successful! Please check your email.');
       switchTab('login');
+      // Clear form
+      document.getElementById('signup-email').value = '';
+      document.getElementById('signup-password').value = '';
     } else {
-      showError(data.message || 'Signup failed');
+      showError(data.detail || data.message || 'Signup failed. Please try again.');
     }
   } catch (e) {
     showError('Signup failed: ' + e.message);
