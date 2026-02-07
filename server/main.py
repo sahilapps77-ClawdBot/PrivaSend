@@ -9,7 +9,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -23,6 +23,8 @@ from tools.redact import redact, deredact, RedactionResult
 from tools.pii_categories import get_category, get_category_order
 from tools.openrouter import send_prompt, get_available_models, OpenRouterError
 from tools.file_extractor import extract_text_from_file, ExtractionError, SUPPORTED_TYPES
+from tools.auth import get_current_user, require_auth, User, AuthError
+from tools.supabase_client import get_supabase_client, SUPABASE_URL, SUPABASE_ANON_KEY
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -60,8 +62,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
-    allow_credentials=False,
+    allow_headers=["Content-Type", "Authorization"],
+    allow_credentials=True,
 )
 
 # Rate limiting: protect expensive AI endpoints from abuse
@@ -192,7 +194,10 @@ async def api_analyze(body: TextInput):
 
 
 @app.post("/api/redact", response_model=RedactResponse)
-async def api_redact(body: TextInput):
+async def api_redact(
+    body: TextInput,
+    user: User = Depends(get_current_user),
+):
     """Detect and redact PII, returning redacted text + mapping."""
     log.info("POST /api/redact  len=%d", len(body.text))
     t0 = time.perf_counter()
@@ -225,7 +230,10 @@ async def api_redact(body: TextInput):
 
 
 @app.post("/api/deredact", response_model=DeredactResponse)
-async def api_deredact(body: DeredactInput):
+async def api_deredact(
+    body: DeredactInput,
+    user: User = Depends(get_current_user),
+):
     """Restore original values from redacted text + mapping."""
     log.info("POST /api/deredact  len=%d", len(body.text))
     restored = deredact(body.text, body.mapping)
@@ -251,7 +259,10 @@ async def health():
 
 
 @app.post("/api/analyze-for-review", response_model=ReviewResponse)
-async def api_analyze_for_review(body: TextInput):
+async def api_analyze_for_review(
+    body: TextInput,
+    user: User = Depends(get_current_user),
+):
     """
     Detect PII and return entities grouped by category for user review.
 
@@ -301,7 +312,10 @@ async def api_analyze_for_review(body: TextInput):
 
 
 @app.post("/api/redact-selected", response_model=RedactResponse)
-async def api_redact_selected(body: RedactSelectedInput):
+async def api_redact_selected(
+    body: RedactSelectedInput,
+    user: User = Depends(get_current_user),
+):
     """
     Redact only the entities selected by the user.
 
@@ -350,7 +364,11 @@ async def api_redact_selected(body: RedactSelectedInput):
 
 @app.post("/api/send-to-ai", response_model=AIResponse)
 @limiter.limit("10/minute")
-async def api_send_to_ai(request: Request, body: SendToAIInput):
+async def api_send_to_ai(
+    request: Request,
+    body: SendToAIInput,
+    user: User = Depends(get_current_user),
+):
     """
     Redact selected entities and send to AI via OpenRouter.
 
@@ -411,6 +429,134 @@ async def api_get_models():
 
 
 # ---------------------------------------------------------------------------
+# Auth endpoints
+# ---------------------------------------------------------------------------
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class AuthResponse(BaseModel):
+    success: bool
+    user: dict | None = None
+    access_token: str | None = None
+    message: str | None = None
+
+
+@app.post("/api/auth/signup", response_model=AuthResponse)
+async def api_signup(body: SignupRequest):
+    """Sign up with email and password."""
+    log.info("POST /api/auth/signup email=%s", body.email)
+    
+    try:
+        supabase = get_supabase_client()
+        result = supabase.auth.sign_up({
+            "email": body.email,
+            "password": body.password,
+        })
+        
+        if result.user:
+            return AuthResponse(
+                success=True,
+                user={
+                    "id": result.user.id,
+                    "email": result.user.email,
+                },
+                message="Signup successful! Please check your email to verify your account.",
+            )
+        else:
+            return AuthResponse(success=False, message="Signup failed")
+            
+    except Exception as e:
+        log.error("Signup error: %s", e)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/auth/login", response_model=AuthResponse)
+async def api_login(body: LoginRequest):
+    """Login with email and password."""
+    log.info("POST /api/auth/login email=%s", body.email)
+    
+    try:
+        supabase = get_supabase_client()
+        result = supabase.auth.sign_in_with_password({
+            "email": body.email,
+            "password": body.password,
+        })
+        
+        if result.session:
+            return AuthResponse(
+                success=True,
+                user={
+                    "id": result.user.id,
+                    "email": result.user.email,
+                },
+                access_token=result.session.access_token,
+                message="Login successful!",
+            )
+        else:
+            return AuthResponse(success=False, message="Login failed")
+            
+    except Exception as e:
+        log.error("Login error: %s", e)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
+@app.get("/api/auth/google")
+async def api_google_auth():
+    """Get Google OAuth URL."""
+    log.info("GET /api/auth/google")
+    
+    try:
+        supabase = get_supabase_client()
+        result = supabase.auth.sign_in_with_oauth({
+            "provider": "google",
+            "options": {
+                "redirect_to": "https://privasend-production.up.railway.app/auth/callback",
+            },
+        })
+        
+        return {"url": result.url}
+        
+    except Exception as e:
+        log.error("Google auth error: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to generate Google auth URL")
+
+
+@app.get("/api/auth/me")
+async def api_get_me(user: User = Depends(get_current_user)):
+    """Get current authenticated user."""
+    return {
+        "success": True,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+        },
+    }
+
+
+@app.post("/api/auth/logout")
+async def api_logout(user: User = Depends(get_current_user)):
+    """Logout current user."""
+    log.info("POST /api/auth/logout user=%s", user.email)
+    
+    try:
+        supabase = get_supabase_client()
+        supabase.auth.sign_out()
+        return {"success": True, "message": "Logged out successfully"}
+        
+    except Exception as e:
+        log.error("Logout error: %s", e)
+        raise HTTPException(status_code=500, detail="Logout failed")
+
+
+# ---------------------------------------------------------------------------
 # File upload endpoint
 # ---------------------------------------------------------------------------
 
@@ -420,6 +566,7 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 @app.post("/api/upload")
 async def api_upload_file(
     file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
 ):
     """
     Upload and extract text from PDF, DOCX, TXT, or image files.
