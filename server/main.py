@@ -475,7 +475,10 @@ async def api_signup(body: SignupRequest):
             
     except Exception as e:
         log.error("Signup error: %s", e)
-        raise HTTPException(status_code=400, detail=str(e))
+        error_msg = str(e)
+        if "rate limit" in error_msg.lower():
+            raise HTTPException(status_code=429, detail="Too many signup attempts. Please wait 5 minutes and try again.")
+        raise HTTPException(status_code=400, detail=error_msg)
 
 
 @app.post("/api/auth/login", response_model=AuthResponse)
